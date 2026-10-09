@@ -15,6 +15,7 @@ import { Integration } from "./integration"
 import { Location } from "./location"
 import { LocationMutation } from "./location-mutation"
 import { LocationServiceMap } from "./location-service-map"
+import { MemoryCommand } from "./memory/command"
 import { PermissionV2 } from "./permission"
 import { PluginV2 } from "./plugin"
 import { PluginInternal } from "./plugin/internal"
@@ -50,6 +51,7 @@ export const locationServices = LayerNode.group([
   Config.node,
   AgentV2.node,
   CommandV2.node,
+  MemoryCommand.node,
   Reference.node,
   Integration.node,
   Catalog.node,
@@ -65,7 +67,7 @@ export const locationServices = LayerNode.group([
   SkillV2.node,
   SystemContextRegistry.node,
   SystemContextBuiltIns.node,
-   ProjectContext.node,
+  ProjectContext.node,
   ProjectImports.node,
   ProjectStructure.node,
   ProjectDocs.node,
