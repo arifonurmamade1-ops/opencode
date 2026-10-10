@@ -21,8 +21,9 @@ const media = (file: FileAttachment): ContentPart => ({
 /**
  * Multimodal gate: a media attachment reaches the provider only when the selected model
  * declares the matching input modality. Otherwise the attachment becomes an explicit text
- * notice, so the model is never told it saw content it did not receive.
- * A model that declares no input modalities keeps the previous pass-through behavior.
+ * notice, so the model is never told it saw content it did not receive. When no model
+ * metadata is known (no catalog, or no declared input modalities), media is withheld too:
+ * silently sending unverified media to a provider is the failure this gate exists to prevent.
  */
 const modality = (mime: string) => {
   if (mime.startsWith("image/")) return "image"
@@ -31,7 +32,8 @@ const modality = (mime: string) => {
 
 const mediaFor = (file: FileAttachment, input: ReadonlyArray<string> | undefined): ContentPart => {
   const required = modality(file.mime)
-  if (!input || input.length === 0 || !required || input.includes(required)) return media(file)
+  if (!required) return media(file)
+  if (input?.includes(required)) return media(file)
   return {
     type: "text",
     text: `[Attachment ${file.name ?? file.uri} (${file.mime}) omitted: the selected model does not accept ${required} input.]`,

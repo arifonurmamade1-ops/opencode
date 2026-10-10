@@ -52,11 +52,24 @@ describe("toLLMMessages multimodal gate", () => {
     ])
   })
 
-  test("keeps the previous pass-through when the model declares no input modalities", () => {
-    const [message] = toLLMMessages([userWith("image/png")], model, [])
+  test("withholds media when no model metadata is known, instead of passing it unverified", () => {
+    const [unknown] = toLLMMessages([userWith("image/png")], model, [])
+    expect(unknown?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("does not accept image input") }),
+    ])
+    const [missing] = toLLMMessages([userWith("image/png")], model)
+    expect(missing?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("does not accept image input") }),
+    ])
+  })
+
+  test("never gates non-media attachments", () => {
+    const [message] = toLLMMessages([userWith("text/plain")], model, [])
     expect(message?.content).toEqual([
       expect.objectContaining({ type: "text", text: "look" }),
-      expect.objectContaining({ type: "media", mediaType: "image/png" }),
+      expect.objectContaining({ type: "media", mediaType: "text/plain" }),
     ])
   })
 })
@@ -160,7 +173,7 @@ describe("toLLMMessages", () => {
         role: "user",
         content: [
           { type: "text", text: "Inspect this image" },
-          { type: "media", mediaType: "image/png", data: "data:image/png;base64,aGVsbG8=", filename: "hello.png" },
+          { type: "text", text: "[Attachment hello.png (image/png) omitted: the selected model does not accept image input.]" },
         ],
         metadata: { agents: [{ name: "build" }] },
       }),
