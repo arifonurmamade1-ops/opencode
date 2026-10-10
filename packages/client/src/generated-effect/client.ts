@@ -681,6 +681,33 @@ const adaptGroup17 = (raw: RawClient["server.projectCopy"]) => ({
   refresh: Endpoint17_2(raw),
 })
 
+type Endpoint18_0Request = Parameters<RawClient["server.voice"]["voice.transcribe"]>[0]
+type Endpoint18_0Input = {
+  readonly location?: Endpoint18_0Request["query"]["location"]
+  readonly data: Endpoint18_0Request["payload"]["data"]
+  readonly mime: Endpoint18_0Request["payload"]["mime"]
+  readonly language?: Endpoint18_0Request["payload"]["language"]
+}
+const Endpoint18_0 = (raw: RawClient["server.voice"]) => (input: Endpoint18_0Input) =>
+  raw["voice.transcribe"]({
+    query: { location: input["location"] },
+    payload: { data: input["data"], mime: input["mime"], language: input["language"] },
+  }).pipe(Effect.mapError(mapClientError))
+
+type Endpoint18_1Request = Parameters<RawClient["server.voice"]["voice.speak"]>[0]
+type Endpoint18_1Input = {
+  readonly location?: Endpoint18_1Request["query"]["location"]
+  readonly text: Endpoint18_1Request["payload"]["text"]
+  readonly voice?: Endpoint18_1Request["payload"]["voice"]
+}
+const Endpoint18_1 = (raw: RawClient["server.voice"]) => (input: Endpoint18_1Input) =>
+  raw["voice.speak"]({
+    query: { location: input["location"] },
+    payload: { text: input["text"], voice: input["voice"] },
+  }).pipe(Effect.mapError(mapClientError))
+
+const adaptGroup18 = (raw: RawClient["server.voice"]) => ({ transcribe: Endpoint18_0(raw), speak: Endpoint18_1(raw) })
+
 const adaptClient = (raw: RawClient) => ({
   health: adaptGroup0(raw["server.health"]),
   location: adaptGroup1(raw["server.location"]),
@@ -700,6 +727,7 @@ const adaptClient = (raw: RawClient) => ({
   questions: adaptGroup15(raw["server.question"]),
   references: adaptGroup16(raw["server.reference"]),
   projectCopies: adaptGroup17(raw["server.projectCopy"]),
+  "server.voice": adaptGroup18(raw["server.voice"]),
 })
 
 export const make = (options?: { readonly baseUrl?: URL | string }) =>

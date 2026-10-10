@@ -101,6 +101,14 @@ export type ProjectCopyError = {
 export const isProjectCopyError = (value: unknown): value is ProjectCopyError =>
   typeof value === "object" && value !== null && "name" in value && value["name"] === "ProjectCopyError"
 
+export type VoiceUnavailableError = {
+  readonly _tag: "VoiceUnavailableError"
+  readonly message: string
+  readonly attempts: ReadonlyArray<{ readonly provider: string; readonly reason: string }>
+}
+export const isVoiceUnavailableError = (value: unknown): value is VoiceUnavailableError =>
+  typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "VoiceUnavailableError"
+
 export type HealthGetOutput = { readonly healthy: true }
 
 export type LocationGetInput = {
@@ -2805,3 +2813,38 @@ export type ProjectCopiesRefreshInput = {
 }
 
 export type ProjectCopiesRefreshOutput = void
+
+export type ServerVoiceTranscribeInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly data: { readonly data: string; readonly mime: string; readonly language?: string }["data"]
+  readonly mime: { readonly data: string; readonly mime: string; readonly language?: string }["mime"]
+  readonly language?: { readonly data: string; readonly mime: string; readonly language?: string }["language"]
+}
+
+export type ServerVoiceTranscribeOutput = {
+  readonly location: {
+    readonly directory: string
+    readonly workspaceID?: string
+    readonly project: { readonly id: string; readonly directory: string }
+  }
+  readonly data: { readonly text: string; readonly provider: string }
+}
+
+export type ServerVoiceSpeakInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly text: { readonly text: string; readonly voice?: string }["text"]
+  readonly voice?: { readonly text: string; readonly voice?: string }["voice"]
+}
+
+export type ServerVoiceSpeakOutput = {
+  readonly location: {
+    readonly directory: string
+    readonly workspaceID?: string
+    readonly project: { readonly id: string; readonly directory: string }
+  }
+  readonly data: { readonly data: string; readonly mime: string; readonly provider: string }
+}

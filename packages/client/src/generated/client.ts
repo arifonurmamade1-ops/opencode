@@ -112,6 +112,10 @@ import type {
   ProjectCopiesRemoveOutput,
   ProjectCopiesRefreshInput,
   ProjectCopiesRefreshOutput,
+  ServerVoiceTranscribeInput,
+  ServerVoiceTranscribeOutput,
+  ServerVoiceSpeakInput,
+  ServerVoiceSpeakOutput,
 } from "./types"
 import { ClientError } from "./client-error"
 
@@ -983,6 +987,34 @@ export function make(options: ClientOptions) {
             successStatus: 204,
             declaredStatuses: [400, 401],
             empty: true,
+          },
+          requestOptions,
+        ),
+    },
+    "server.voice": {
+      transcribe: (input: ServerVoiceTranscribeInput, requestOptions?: RequestOptions) =>
+        request<ServerVoiceTranscribeOutput>(
+          {
+            method: "POST",
+            path: `/api/voice/transcribe`,
+            query: { location: input["location"] },
+            body: { data: input["data"], mime: input["mime"], language: input["language"] },
+            successStatus: 200,
+            declaredStatuses: [503, 401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      speak: (input: ServerVoiceSpeakInput, requestOptions?: RequestOptions) =>
+        request<ServerVoiceSpeakOutput>(
+          {
+            method: "POST",
+            path: `/api/voice/speak`,
+            query: { location: input["location"] },
+            body: { text: input["text"], voice: input["voice"] },
+            successStatus: 200,
+            declaredStatuses: [503, 401, 400],
+            empty: false,
           },
           requestOptions,
         ),

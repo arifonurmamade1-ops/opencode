@@ -34,6 +34,15 @@ export class ServiceUnavailableError extends Schema.TaggedErrorClass<ServiceUnav
   { httpApiStatus: 503 },
 ) {}
 
+export class VoiceUnavailableError extends Schema.TaggedErrorClass<VoiceUnavailableError>()(
+  "VoiceUnavailableError",
+  {
+    message: Schema.String,
+    attempts: Schema.Array(Schema.Struct({ provider: Schema.String, reason: Schema.String })),
+  },
+  { httpApiStatus: 503 },
+) {}
+
 export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()(
   "UnknownError",
   {
