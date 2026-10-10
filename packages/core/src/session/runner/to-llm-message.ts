@@ -18,6 +18,26 @@ const media = (file: FileAttachment): ContentPart => ({
   metadata: file.description === undefined ? undefined : { description: file.description },
 })
 
+/**
+ * Multimodal gate: a media attachment reaches the provider only when the selected model
+ * declares the matching input modality. Otherwise the attachment becomes an explicit text
+ * notice, so the model is never told it saw content it did not receive.
+ * A model that declares no input modalities keeps the previous pass-through behavior.
+ */
+const modality = (mime: string) => {
+  if (mime.startsWith("image/")) return "image"
+  if (mime === "application/pdf") return "pdf"
+}
+
+const mediaFor = (file: FileAttachment, input: ReadonlyArray<string> | undefined): ContentPart => {
+  const required = modality(file.mime)
+  if (!input || input.length === 0 || !required || input.includes(required)) return media(file)
+  return {
+    type: "text",
+    text: `[Attachment ${file.name ?? file.uri} (${file.mime}) omitted: the selected model does not accept ${required} input.]`,
+  }
+}
+
 const toolInput = (tool: SessionMessage.AssistantTool) => {
   if (tool.state.status !== "pending") return tool.state.input
   try {
@@ -112,7 +132,7 @@ const assistant = (message: SessionMessage.Assistant, model: Model) => {
   ]
 }
 
-function toLLMMessage(message: SessionMessage.Message, model: Model): Message[] {
+function toLLMMessage(message: SessionMessage.Message, model: Model, input: ReadonlyArray<string> | undefined): Message[] {
   switch (message.type) {
     case "agent-switched":
     case "model-switched":
@@ -122,7 +142,10 @@ function toLLMMessage(message: SessionMessage.Message, model: Model): Message[] 
         Message.make({
           id: message.id,
           role: "user",
-          content: [{ type: "text", text: message.text }, ...(message.files ?? []).map(media)],
+          content: [
+            { type: "text", text: message.text },
+            ...(message.files ?? []).map((file) => mediaFor(file, input)),
+          ],
           metadata: {
             ...message.metadata,
             ...(message.agents?.length ? { agents: message.agents } : {}),
@@ -167,5 +190,8 @@ ${message.recent}
 }
 
 /** Translate projected V2 Session history into canonical @opencode-ai/llm context. */
-export const toLLMMessages = (messages: readonly SessionMessage.Message[], model: Model) =>
-  messages.flatMap((message) => toLLMMessage(message, model))
+export const toLLMMessages = (
+  messages: readonly SessionMessage.Message[],
+  model: Model,
+  input?: ReadonlyArray<string>,
+) => messages.flatMap((message) => toLLMMessage(message, model, input))

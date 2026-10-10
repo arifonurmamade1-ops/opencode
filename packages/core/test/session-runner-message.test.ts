@@ -13,6 +13,54 @@ const created = DateTime.makeUnsafe(0)
 const id = (value: string) => SessionMessage.ID.make(`msg_${value}`)
 const model = Model.make({ id: "model", provider: "provider", route: OpenAIChat.route })
 
+describe("toLLMMessages multimodal gate", () => {
+  const userWith = (mime: string) =>
+    SessionMessage.User.make({
+      id: id("user"),
+      type: "user",
+      text: "look",
+      files: [FileAttachment.make({ uri: `data:${mime};base64,aGVsbG8=`, mime, name: "file" })],
+      time: { created },
+    })
+
+  test("passes an image through when the model accepts image input", () => {
+    const [message] = toLLMMessages([userWith("image/png")], model, ["text", "image"])
+    expect(message?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "media", mediaType: "image/png" }),
+    ])
+  })
+
+  test("replaces an image with an explicit notice when the model is text-only", () => {
+    const [message] = toLLMMessages([userWith("image/png")], model, ["text"])
+    expect(message?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("does not accept image input") }),
+    ])
+  })
+
+  test("replaces a PDF when the model lacks pdf input and keeps it when declared", () => {
+    const [blocked] = toLLMMessages([userWith("application/pdf")], model, ["text", "image"])
+    expect(blocked?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("does not accept pdf input") }),
+    ])
+    const [allowed] = toLLMMessages([userWith("application/pdf")], model, ["text", "pdf"])
+    expect(allowed?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "media", mediaType: "application/pdf" }),
+    ])
+  })
+
+  test("keeps the previous pass-through when the model declares no input modalities", () => {
+    const [message] = toLLMMessages([userWith("image/png")], model, [])
+    expect(message?.content).toEqual([
+      expect.objectContaining({ type: "text", text: "look" }),
+      expect.objectContaining({ type: "media", mediaType: "image/png" }),
+    ])
+  })
+})
+
 describe("toLLMMessages", () => {
   test("omits empty assistant turns", () => {
     const assistant = (value: string, content: SessionMessage.Assistant["content"]) =>
