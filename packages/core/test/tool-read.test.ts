@@ -335,6 +335,34 @@ describe("ReadTool", () => {
     }),
   )
 
+  it.effect("returns a PDF as native media without resizing", () =>
+    Effect.gen(function* () {
+      const pdf = Buffer.from("%PDF-1.4\n%test\n").toString("base64")
+      readResult = {
+        uri: "file:///spec.pdf",
+        name: "spec.pdf",
+        content: pdf,
+        encoding: "base64",
+        mime: "application/pdf",
+      }
+      const registry = yield* ToolRegistry.Service
+
+      expect(
+        yield* executeTool(registry, {
+          sessionID,
+          ...toolIdentity,
+          call: { type: "tool-call", id: "call-pdf", name: "read", input: { path: "spec.pdf" } },
+        }),
+      ).toEqual({
+        type: "content",
+        value: [
+          { type: "text", text: "PDF read successfully" },
+          { type: "file", uri: `data:application/pdf;base64,${pdf}`, mime: "application/pdf", name: "spec.pdf" },
+        ],
+      })
+    }),
+  )
+
   it.effect("rejects invalid image data returned by the filesystem", () =>
     Effect.gen(function* () {
       readResult = {
