@@ -42,6 +42,7 @@ import { BuiltInTools } from "./tool/builtins"
 import { ReadToolFileSystem } from "./tool/read-filesystem"
 import { ToolRegistry } from "./tool/registry"
 import { ToolOutputStore } from "./tool-output-store"
+import { Voice } from "./voice"
 
 export { LocationServiceMap } from "./location-service-map"
 
@@ -79,6 +80,7 @@ export const locationServices = LayerNode.group([
   ToolRegistry.node,
   ToolRegistry.toolsNode,
   Image.node,
+  Voice.node,
   SkillGuidance.node,
   ReferenceGuidance.node,
   SessionTodo.node,

@@ -22,6 +22,7 @@ import { ConfigPlugin } from "./config/plugin"
 import { ConfigProvider } from "./config/provider"
 import { ConfigReference } from "./config/reference"
 import { ConfigToolOutput } from "./config/tool-output"
+import { ConfigVoice } from "./config/voice"
 import { ConfigWatcher } from "./config/watcher"
 import { ConfigV1 } from "./v1/config/config"
 import { ConfigMigrateV1 } from "./v1/config/migrate"
@@ -107,6 +108,9 @@ export class Info extends Schema.Class<Info>("Config.Info")({
   }),
   experimental: ConfigExperimental.Experimental.pipe(Schema.optional),
   providers: Schema.Record(Schema.String, ConfigProvider.Info).pipe(Schema.optional),
+  voice: ConfigVoice.Info.pipe(Schema.optional).annotate({
+    description: "Speech-to-text and text-to-speech provider chain with fallback",
+  }),
 }) {}
 
 export class Document extends Schema.Class<Document>("Config.Document")({
