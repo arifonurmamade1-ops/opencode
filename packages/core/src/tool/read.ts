@@ -15,6 +15,7 @@ import { Tools } from "./tools"
 
 export const name = "read"
 const SUPPORTED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"])
+const SUPPORTED_MEDIA_MIMES = new Set([...SUPPORTED_IMAGE_MIMES, "application/pdf"])
 const LocationInput = Schema.Struct({
   path: Schema.String,
   offset: ReadToolFileSystem.PageInput.fields.offset.annotate({
@@ -43,10 +44,10 @@ const layer = Layer.effectDiscard(
           input: Input,
           output: Output,
           toModelOutput: ({ input, output }) => {
-            if (!("encoding" in output) || output.encoding !== "base64" || !SUPPORTED_IMAGE_MIMES.has(output.mime))
+            if (!("encoding" in output) || output.encoding !== "base64" || !SUPPORTED_MEDIA_MIMES.has(output.mime))
               return []
             return [
-              { type: "text", text: "Image read successfully" },
+              { type: "text", text: output.mime === "application/pdf" ? "PDF read successfully" : "Image read successfully" },
               { type: "file", data: output.content, mime: output.mime, name: input.path },
             ]
           },
@@ -83,6 +84,8 @@ const layer = Layer.effectDiscard(
                 offset: input.offset,
                 limit: input.limit,
               })
+              if ("encoding" in content && content.encoding === "base64" && content.mime === "application/pdf")
+                return content
               if ("encoding" in content && content.encoding === "base64" && SUPPORTED_IMAGE_MIMES.has(content.mime)) {
                 return yield* image
                   .normalize(resource, { ...content, encoding: "base64" })
