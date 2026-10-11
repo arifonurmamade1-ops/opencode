@@ -111,7 +111,7 @@ export function webSpeechSpeak(text: string, options: { language?: string; synth
 const decodeAudio = (value: string) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0))
 
 const playAudio = (data: Uint8Array, mime: string) => {
-  const url = URL.createObjectURL(new Blob([data], { type: mime }))
+  const url = URL.createObjectURL(new Blob([new Uint8Array(data)], { type: mime }))
   const audio = new Audio(url)
   audio.onended = () => URL.revokeObjectURL(url)
   void audio.play()
