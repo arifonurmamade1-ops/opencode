@@ -945,6 +945,12 @@ export default function LegacyLayout(props: ParentProps) {
         onSelect: () => openSettings(),
       },
       {
+        id: "dashboard.open",
+        title: language.t("command.dashboard.open"),
+        category: language.t("command.category.view"),
+        onSelect: () => openDashboard(),
+      },
+      {
         id: "session.previous",
         title: language.t("command.session.previous"),
         category: language.t("command.category.session"),
@@ -1107,6 +1113,16 @@ export default function LegacyLayout(props: ParentProps) {
     void module.then((x) => {
       if (dialogDead || dialogRun !== run) return
       dialog.show(() => <x.DialogSettings />)
+    })
+  }
+
+  function openDashboard() {
+    const conn = server.current
+    if (!conn) return
+    const run = ++dialogRun
+    void import("@/components/dialog-dashboard-v2").then((x) => {
+      if (dialogDead || dialogRun !== run) return
+      dialog.show(() => <x.DialogDashboardV2 server={conn} />)
     })
   }
 
