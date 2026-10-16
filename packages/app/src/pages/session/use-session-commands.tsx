@@ -560,6 +560,12 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       },
     }),
     viewCommand({
+      id: "browser.toggle",
+      title: language.t("command.browser.toggle"),
+      keybind: "mod+shift+b",
+      onSelect: () => view().browser.toggle(),
+    }),
+    viewCommand({
       id: "review.toggle",
       title: language.t("command.review.toggle"),
       keybind: "mod+shift+r",

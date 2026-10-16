@@ -58,6 +58,7 @@ import { useSettings } from "@/context/settings"
 import { useSync } from "@/context/sync"
 import { useTabs } from "@/context/tabs"
 import { TerminalProvider, useTerminal } from "@/context/terminal"
+import { BrowserProvider, useBrowser } from "@/context/browser"
 import { PromptInput } from "@/components/prompt-input"
 import { PromptInputV2Composer, usePromptInputV2Controller } from "@/components/prompt-input-v2"
 import { useSettingsCommand } from "@/components/settings-dialog"
@@ -91,6 +92,8 @@ import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-sta
 import { reviewDiffDirectory, reviewDiffNeedsLoad, reviewRootDirectory } from "@/pages/session/v2/review-diff-kinds"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
 import { TerminalPanelV2 } from "@/pages/session/terminal-panel-v2"
+import { BrowserPanel } from "@/pages/session/browser-panel"
+import { BrowserPanelV2 } from "@/pages/session/browser-panel-v2"
 import { useComposerCommands } from "@/pages/session/use-composer-commands"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
 import { useSessionHashScroll } from "@/pages/session/use-session-hash-scroll"
@@ -317,11 +320,13 @@ function MarkSessionNotificationsViewed(props: { sessionID?: () => string | unde
 function SessionProviders(props: ParentProps) {
   return (
     <TerminalProvider>
-      <FileProvider>
-        <PromptProvider>
-          <CommentsProvider>{props.children}</CommentsProvider>
-        </PromptProvider>
-      </FileProvider>
+      <BrowserProvider>
+        <FileProvider>
+          <PromptProvider>
+            <CommentsProvider>{props.children}</CommentsProvider>
+          </PromptProvider>
+        </FileProvider>
+      </BrowserProvider>
     </TerminalProvider>
   )
 }
@@ -450,6 +455,8 @@ export default function Page() {
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && desktopReviewOpen() && !!params.id)
   const terminalOpen = createMemo(() => view().terminal.opened())
+  const browserOpen = createMemo(() => view().browser.opened())
+  const desktopBrowserOpen = createMemo(() => isDesktop() && browserOpen())
   const desktopTerminalOpen = createMemo(() => isDesktop() && terminalOpen())
   const desktopInlineTerminalOnlyOpen = createMemo(
     () => newSessionDesign() && desktopTerminalOpen() && !desktopV2ReviewOpen(),
@@ -507,6 +514,7 @@ export default function Page() {
       review: desktopV2ReviewOpen(),
       terminal: desktopTerminalOpen(),
       files: desktopFileTreeOpen(),
+      browser: desktopBrowserOpen(),
     }),
   )
 
@@ -2320,7 +2328,7 @@ export default function Page() {
           </Suspense>
         </Show>
         <Show when={newSessionDesign()}>
-          <Show when={isDesktop() ? desktopV2PanelLayout().visible : terminalOpen()}>
+          <Show when={isDesktop() ? desktopV2PanelLayout().visible : terminalOpen() || browserOpen()}>
             <div class="min-w-0 h-full flex flex-1 flex-col">
               <Show when={isDesktop() && (desktopV2ReviewOpen() || desktopFileTreeOpen())}>
                 <div class="min-h-0 flex-1">
@@ -2351,7 +2359,34 @@ export default function Page() {
                   </Suspense>
                 </div>
               </Show>
-              <Show when={desktopV2PanelLayout().stacked}>
+              <Show when={desktopV2PanelLayout().stacked && desktopBrowserOpen()}>
+                <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
+                  <ResizeHandle
+                    class="!relative !inset-auto !h-full !w-full !transform-none"
+                    direction="vertical"
+                    size={layout.browser.height()}
+                    min={100}
+                    max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
+                    collapseThreshold={50}
+                    onResize={(height) => {
+                      size.touch()
+                      layout.browser.resize(height)
+                    }}
+                    onCollapse={() => view().browser.close()}
+                  />
+                </div>
+              </Show>
+              <Show when={browserOpen()}>
+                <div
+                  classList={{
+                    "min-h-0 shrink-0": desktopV2PanelLayout().stacked,
+                    "min-h-0 flex-1": !desktopV2PanelLayout().stacked,
+                  }}
+                >
+                  <BrowserPanelV2 stacked={desktopV2PanelLayout().stacked} />
+                </div>
+              </Show>
+              <Show when={desktopV2PanelLayout().stacked && desktopTerminalOpen()}>
                 <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
                   <ResizeHandle
                     class="!relative !inset-auto !h-full !w-full !transform-none"
@@ -2385,6 +2420,7 @@ export default function Page() {
 
       <Show when={!newSessionDesign()}>
         <TerminalPanel />
+        <BrowserPanel />
       </Show>
     </SessionRouteFrame>
   )

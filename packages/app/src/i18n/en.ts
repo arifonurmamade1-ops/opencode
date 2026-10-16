@@ -57,6 +57,7 @@ export const dict = {
   "command.context.addSelection.description": "Add selected lines from the current file",
   "command.input.focus": "Focus input",
   "command.terminal.toggle": "Toggle terminal",
+  "command.browser.toggle": "Toggle browser",
   "command.fileTree.toggle": "Toggle file tree",
   "command.review.toggle": "Toggle review",
   "command.terminal.new": "New terminal",
@@ -834,6 +835,16 @@ export const dict = {
   "terminal.connectTicket.csrfError":
     "PTY connect ticket rejected by origin or CSRF checks. Check the server CORS config.",
   "terminal.connectTicket.statusError": "PTY connect ticket failed with {{status}}",
+
+  "browser.title": "Browser",
+  "browser.url.placeholder": "https://example.com",
+  "browser.empty": "No page loaded",
+  "browser.empty.note": "Enter a URL and press Enter to open a page. Some sites block embedding and will open in a new tab when you use the open button.",
+  "browser.back": "Back",
+  "browser.forward": "Forward",
+  "browser.reload": "Reload",
+  "browser.openExternal": "Open in new tab",
+  "browser.close": "Close browser",
 
   "titlebar.update": "Update",
   "titlebar.updateVersion": "Update {{version}}",
