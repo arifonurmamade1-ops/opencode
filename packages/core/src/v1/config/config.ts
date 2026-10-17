@@ -61,6 +61,14 @@ export const Info = Schema.Struct({
   autoshare: Schema.optional(Schema.Boolean).annotate({
     description: "@deprecated Use 'share' field instead. Share newly created sessions automatically",
   }),
+  telemetry: Schema.optional(
+    Schema.Struct({
+      enabled: Schema.optional(Schema.Boolean).annotate({
+        description:
+          "Enable the local telemetry tool (tokens, cost, latency, tools, failures, retries, throughput, task outcomes). Disabled by default. Reports are computed on demand from this machine's own session database and are never transmitted anywhere.",
+      }),
+    }),
+  ).annotate({ description: "Local-only telemetry. Off by default; enabling it never sends data off this machine." }),
   autoupdate: Schema.optional(Schema.Union([Schema.Boolean, Schema.Literal("notify")])).annotate({
     description:
       "Automatically update to the latest version. Set to true to auto-update, false to disable, or 'notify' to show update notifications",

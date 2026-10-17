@@ -1,0 +1,17 @@
+Show local usage telemetry for this machine: tokens, cost, latency, throughput,
+tool calls and tool errors, provider retries, model/provider breakdown, and
+per-task outcomes (success, error, incomplete).
+
+Everything is computed on demand from this machine's own session database,
+read-only. No data is ever transmitted anywhere and there is no background
+collection. Reports contain aggregate numbers only — no prompts, file contents,
+paths, or titles.
+
+The feature is disabled by default for privacy. It only works after the user
+enables it in opencode.json (project or global):
+
+  { "telemetry": { "enabled": true } }
+
+If the tool reports "disabled", relay that snippet to the user and ask before
+enabling anything. Prefer `days` to window the report and `top` to control how
+many entries each ranked list shows.
