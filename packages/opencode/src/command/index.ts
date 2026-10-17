@@ -9,6 +9,12 @@ import { MCP } from "../mcp"
 import { Skill } from "../skill"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
+import PROMPT_EXPLAIN from "./template/explain.txt"
+import PROMPT_FIX from "./template/fix.txt"
+import PROMPT_REFACTOR from "./template/refactor.txt"
+import PROMPT_TESTS from "./template/tests.txt"
+import PROMPT_DOCS from "./template/docs.txt"
+import PROMPT_GENERATE from "./template/generate.txt"
 import { LegacyEvent } from "@opencode-ai/schema/legacy-event"
 
 type State = {
@@ -46,7 +52,46 @@ export function hints(template: string) {
 export const Default = {
   INIT: "init",
   REVIEW: "review",
+  EXPLAIN: "explain",
+  FIX: "fix",
+  REFACTOR: "refactor",
+  TESTS: "tests",
+  DOCS: "docs",
+  GENERATE: "generate",
 } as const
+
+const EDIT_COMMANDS = [
+  {
+    name: Default.EXPLAIN,
+    description: "explain code [file|path:lines|symbol], defaults to current context",
+    prompt: PROMPT_EXPLAIN,
+  },
+  {
+    name: Default.FIX,
+    description: "diagnose and fix a problem [description|error|path], defaults to current context",
+    prompt: PROMPT_FIX,
+  },
+  {
+    name: Default.REFACTOR,
+    description: "refactor code without changing behavior [file|path:lines|goal], defaults to current context",
+    prompt: PROMPT_REFACTOR,
+  },
+  {
+    name: Default.TESTS,
+    description: "add or update tests [file|path:lines|behavior], defaults to current context",
+    prompt: PROMPT_TESTS,
+  },
+  {
+    name: Default.DOCS,
+    description: "document code [file|path:lines|topic], defaults to current context",
+    prompt: PROMPT_DOCS,
+  },
+  {
+    name: Default.GENERATE,
+    description: "generate new code from a description, defaults to current context",
+    prompt: PROMPT_GENERATE,
+  },
+] as const
 
 export interface Interface {
   readonly get: (name: string) => Effect.Effect<Info | undefined>
@@ -85,6 +130,16 @@ const layer = Layer.effect(
         },
         subtask: true,
         hints: hints(PROMPT_REVIEW),
+      }
+
+      for (const item of EDIT_COMMANDS) {
+        commands[item.name] = {
+          name: item.name,
+          description: item.description,
+          source: "command",
+          template: item.prompt,
+          hints: hints(item.prompt),
+        }
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

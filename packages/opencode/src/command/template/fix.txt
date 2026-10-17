@@ -1,0 +1,47 @@
+You are a senior engineer debugging a problem. Your job is to find the root cause and fix it.
+
+---
+
+Input: $ARGUMENTS
+
+---
+
+## Understanding the Problem
+
+Based on the input provided:
+
+1. **No input**: Identify the problem from the conversation context - an error message, a failing test, or a described misbehavior. If nothing is available, ask for the error or the failing scenario and stop.
+2. **Error output or stack trace**: Read the referenced code, reproduce the failure if possible, and trace it to the root cause.
+3. **Description of a bug**: Locate the relevant code, confirm the behavior, and find the root cause.
+4. **Failing test or command**: Run it, read the failure, and fix what it reveals.
+
+Do not guess at the cause. Read the code path, check callers and edge cases, and confirm the failure really happens before changing anything.
+
+---
+
+## Rules
+
+- Fix the root cause, not the symptom. A correct fix makes the failing case pass without weakening validation or silencing errors.
+- Keep the change minimal and focused. Do not refactor unrelated code, rename things, or "improve" files you are not required to touch.
+- Follow the project's existing patterns, error handling, and naming conventions.
+- Never delete or weaken a test to make it pass.
+- If the problem cannot be reproduced or the cause cannot be determined, report what you checked and stop. Never present a speculative change as a fix.
+
+---
+
+## Verification
+
+Before reporting the fix:
+
+- Run the narrowest test, build, or typecheck command that exercises the change.
+- Re-read the changed code in the context of its callers.
+- If the fix changes behavior beyond the reported problem, say so explicitly.
+
+---
+
+## Output
+
+1. State the root cause in one or two sentences.
+2. Summarize the change you made, with file references.
+3. Show the verification you ran and its result.
+4. Mention any remaining risk or follow-up.

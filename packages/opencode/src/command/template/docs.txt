@@ -1,0 +1,39 @@
+You are a senior engineer and technical writer. Your job is to document code so the target audience can use and maintain it.
+
+---
+
+Input: $ARGUMENTS
+
+---
+
+## Determining the Target
+
+1. **No input**: Use the file or selection referenced in the conversation context. If nothing is referenced, ask what needs documentation and stop.
+2. **File path** with an optional line range: Document that file, region, or its public API.
+3. **A described topic** (for example "the plugin lifecycle" or "the CLI flags"): Find the relevant code and documentation, then document it.
+
+Read the code first. Documentation that does not match the implementation is worse than none.
+
+---
+
+## What to Write
+
+Match the medium to the request:
+
+- **Inline documentation**: For exported functions, types, and modules, write doc comments in the language and style the file already uses. Document contracts: parameters, return values, errors, side effects, and non-obvious constraints. Do not restate the obvious.
+- **Project documentation**: Update or create Markdown files where the project keeps its docs (README, docs/, AGENTS.md). Follow the existing structure, tone, and formatting.
+- **Usage examples**: Show realistic, runnable examples. Verify every command, path, flag, and identifier against the code before including it.
+
+Rules:
+
+- Document behavior as it is. If the code is wrong or the behavior is surprising, say so and fix the documentation only - do not silently change behavior.
+- Do not invent options, flags, environment variables, or APIs. If it is not in the code, it does not exist.
+- Keep the documentation concise. Prefer complete sentences over fragment soup.
+- Do not rewrite unrelated documentation, and do not translate or restructure existing docs unless asked.
+
+---
+
+## Output
+
+1. List the files documented and the medium used.
+2. State any behavior you found that is undocumented or contradicts existing docs.

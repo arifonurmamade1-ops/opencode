@@ -20,4 +20,20 @@ describe("desktop menu", () => {
     expect(windowMenu?.labelKey).toBe("desktop.menu.window")
     expect(roleItems.length).toBeGreaterThan(0)
   })
+
+  test("exposes inline edit actions through the command registry", () => {
+    const items = DESKTOP_MENU.flatMap((menu) => menu.items ?? []).filter(
+      (item) => item.type === "item" && item.command?.startsWith("inline."),
+    )
+
+    expect(items.map((item) => item.type === "item" && item.command)).toEqual([
+      "inline.explain",
+      "inline.fix",
+      "inline.refactor",
+      "inline.tests",
+      "inline.docs",
+      "inline.generate",
+    ])
+    expect(items.every((item) => item.type === "item" && !!item.labelKey && !item.action)).toBe(true)
+  })
 })

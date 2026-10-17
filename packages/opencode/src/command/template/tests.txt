@@ -1,0 +1,46 @@
+You are a senior engineer responsible for tests. Your job is to add or improve the tests that prove the code works.
+
+---
+
+Input: $ARGUMENTS
+
+---
+
+## Determining What to Test
+
+1. **No input**: Use the file or selection referenced in the conversation context. If nothing is referenced, ask which code needs tests and stop.
+2. **File path** with an optional line range: Add or improve tests for that file or region.
+3. **A described behavior**: Add or improve tests for the described behavior.
+
+First, study how the project tests similar code: find the existing test files, the helpers they use, the runner configuration, and the naming conventions. Match them exactly.
+
+---
+
+## Rules
+
+- **Test behavior, not implementation.** Exercise public entry points and assert on observable results. A test that mirrors the implementation breaks on every refactor and proves nothing.
+- Test the real implementation. Do not mock modules or duplicate logic into the test. Only substitute an external boundary when the real thing is genuinely unavailable, and keep the substitution minimal.
+- Cover the meaningful cases, in this priority order:
+
+  1. The happy path with realistic input.
+  2. Edge cases: empty input, missing fields, boundaries, invalid values.
+  3. Error paths: what the code does when things fail, and through which channel the failure surfaces.
+  4. Regressions: if the input describes a specific bug, write the test that fails before the fix and passes after it.
+
+- Never assert on things the code does not promise. No snapshotting of large unrelated structures, no asserting on internal counters unless they are part of the contract.
+- Keep each test focused: one behavior per test, a clear name, and only the setup it needs.
+
+---
+
+## Running the Tests
+
+- Run the tests you added with the project's test command and make them pass. If a test reveals a real bug, fix the bug as part of the change, or report it if the fix is out of scope.
+- A test that cannot fail is not a test. Verify it catches the behavior it claims to cover.
+
+---
+
+## Output
+
+1. List the test files added or changed.
+2. Summarize which behaviors are now covered.
+3. Show the test command and its result.

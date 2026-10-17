@@ -278,6 +278,7 @@ const TIPS: Tip[] = [
   "Use {highlight}/connect{/highlight} with OpenCode Zen for curated, tested models",
   "Commit your project's {highlight}AGENTS.md{/highlight} file to Git for team sharing",
   "Use {highlight}/review{/highlight} to review uncommitted changes, branches, or PRs",
+  "Use {highlight}/explain{/highlight}, {highlight}/fix{/highlight}, {highlight}/refactor{/highlight}, {highlight}/tests{/highlight}, {highlight}/docs{/highlight}, or {highlight}/generate{/highlight} to edit code with the agent",
   (shortcuts) => `Use ${commandText("/help", shortcuts.helpShow())} to show the help dialog`,
   "Use {highlight}/rename{/highlight} to rename the current session",
 ]

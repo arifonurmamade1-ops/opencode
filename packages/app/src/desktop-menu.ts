@@ -177,6 +177,13 @@ export const DESKTOP_MENU: DesktopMenu[] = [
         role: "selectAll",
         accelerator: { windows: "Ctrl+A" },
       },
+      { type: "separator" },
+      { type: "item", labelKey: "desktop.menu.inlineExplain", command: "inline.explain" },
+      { type: "item", labelKey: "desktop.menu.inlineFix", command: "inline.fix" },
+      { type: "item", labelKey: "desktop.menu.inlineRefactor", command: "inline.refactor" },
+      { type: "item", labelKey: "desktop.menu.inlineTests", command: "inline.tests" },
+      { type: "item", labelKey: "desktop.menu.inlineDocs", command: "inline.docs" },
+      { type: "item", labelKey: "desktop.menu.inlineGenerate", command: "inline.generate" },
     ],
   },
   {

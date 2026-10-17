@@ -20,6 +20,7 @@ import { Message, Part, UserMessage } from "@opencode-ai/sdk/v2"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { useSessionArchive } from "@/pages/session/session-archive"
 import { createSessionOwnership } from "./session-ownership"
+import { inlineEditText, INLINE_EDIT_COMMANDS, type InlineEditAction } from "./inline-edit"
 import { useLocal } from "@/context/local"
 
 export type SessionCommandContext = {
@@ -137,6 +138,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const sessionCommand = withCategory(language.t("command.category.session"))
   const fileCommand = withCategory(language.t("command.category.file"))
   const contextCommand = withCategory(language.t("command.category.context"))
+  const inlineCommand = withCategory(language.t("command.category.inline"))
   const viewCommand = withCategory(language.t("command.category.view"))
   const terminalCommand = withCategory(language.t("command.category.terminal"))
   const mcpCommand = withCategory(language.t("command.category.mcp"))
@@ -543,6 +545,31 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
+  const inlineCmds = () => {
+    const tab = activeFileTab()
+    const path = tab ? file.pathFromTab(tab) : undefined
+
+    const runInlineEdit = (action: InlineEditAction) => {
+      if (!path) return
+      const range = file.selectedLines(path) as SelectedLineRange | null | undefined
+      const selection = range ? selectionFromLines(range) : undefined
+      if (selection) addSelectionToContext(path, selection)
+      const text = inlineEditText(action, { path, selection })
+      prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
+      focusInput()
+    }
+
+    return INLINE_EDIT_COMMANDS.map((item) =>
+      inlineCommand({
+        id: `inline.${item.action}`,
+        title: language.t(item.title),
+        description: language.t(item.description),
+        disabled: !path,
+        onSelect: () => runInlineEdit(item.action),
+      }),
+    )
+  }
+
   const viewCmds = () => [
     viewCommand({
       id: "terminal.toggle",
@@ -654,6 +681,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     ...shareCmds(),
     ...fileCmds(),
     ...contextCmds(),
+    ...inlineCmds(),
     ...viewCmds(),
     ...terminalCmds(),
     ...messageCmds(),
