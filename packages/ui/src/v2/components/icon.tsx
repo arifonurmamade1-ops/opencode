@@ -85,6 +85,10 @@ const icons = {
     viewBox: "0 0 20 20",
     body: `<path d="M14.4446 5.55566L5.55566 14.4446M5.55566 5.55566L14.4446 14.4446" stroke="currentColor" stroke-linejoin="round"/>`,
   },
+  stop: {
+    viewBox: "0 0 16 16",
+    body: `<rect x="4" y="4" width="8" height="8" fill="currentColor"/>`,
+  },
   "xmark-small": {
     viewBox: "0 0 16 16",
     body: `<path d="M4.25 11.75L11.75 4.25M11.75 11.75L4.25 4.25" stroke="currentColor"/>`,

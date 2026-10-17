@@ -3,6 +3,7 @@ import {
   activeAgents,
   activeCount,
   agentState,
+  attentionCount,
   buildPanels,
   tokenTotal,
   type SessionLike,
@@ -126,7 +127,41 @@ describe("active agents", () => {
       title: "ses_idle",
       directory: "/workspace",
       state: "idle",
+      pending: 0,
+      canInterrupt: false,
     })
+  })
+
+  test("reports pending requests and interrupt eligibility per session", () => {
+    const agents = activeAgents({
+      sessions: [session({ id: "ses_busy" }), session({ id: "ses_idle" })],
+      status,
+      pending: (id) => (id === "ses_busy" ? 2 : 0),
+    })
+    expect(agents.find((agent) => agent.sessionID === "ses_busy")).toMatchObject({ pending: 2, canInterrupt: true })
+    expect(agents.find((agent) => agent.sessionID === "ses_idle")).toMatchObject({ pending: 0, canInterrupt: false })
+  })
+
+  test("sorts sessions waiting for approval before everything else", () => {
+    const agents = activeAgents({
+      sessions: [
+        session({ id: "ses_busy", title: "Busy", time: { created: 0, updated: 50 } }),
+        session({ id: "ses_idle", title: "Waiting", time: { created: 0, updated: 10 } }),
+      ],
+      status,
+      pending: (id) => (id === "ses_idle" ? 1 : 0),
+    })
+    expect(agents.map((agent) => agent.sessionID)).toEqual(["ses_idle", "ses_busy"])
+  })
+
+  test("counts only sessions waiting for the user", () => {
+    const agents = activeAgents({
+      sessions: [session({ id: "ses_busy" }), session({ id: "ses_retry" }), session({ id: "ses_idle" })],
+      status,
+      pending: (id) => (id === "ses_idle" ? 3 : 0),
+    })
+    expect(attentionCount(agents)).toBe(1)
+    expect(attentionCount([])).toBe(0)
   })
 
   test("counts only non-idle agents and honors the limit", () => {

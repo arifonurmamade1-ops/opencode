@@ -4,7 +4,9 @@ import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "@opencode-ai/ui/v2/dialog-v2"
 import { DividerV2 } from "@opencode-ai/ui/v2/divider-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { createMemo, createResource, For, Show } from "solid-js"
+import { createStore } from "solid-js/store"
 import { createSessionContextFormatter } from "@/components/session/session-context-format"
 import { useSettingsDialog } from "@/components/settings-dialog"
 import { loadHomeSessionIndex } from "@/context/global-sync/home-session-index"
@@ -13,7 +15,15 @@ import { useLanguage } from "@/context/language"
 import { useModels } from "@/context/models"
 import { ServerConnection } from "@/context/server"
 import { useTabs } from "@/context/tabs"
-import { activeCount, activeAgents, buildPanels, type AgentEntry, type Panel } from "@/pages/dashboard/dashboard-model"
+import {
+  activeCount,
+  activeAgents,
+  attentionCount,
+  buildPanels,
+  type AgentEntry,
+  type Panel,
+} from "@/pages/dashboard/dashboard-model"
+import { showToast } from "@/utils/toast"
 
 const STATE_KEYS = {
   busy: "dashboard.agents.state.busy",
@@ -42,7 +52,11 @@ export function DialogDashboardV2(props: { server: ServerConnection.Any }) {
   )
 
   const status = (sessionID: string) => ctx.sync.session.data.session_status[sessionID]
-  const agents = createMemo(() => activeAgents({ sessions: sessions() ?? [], status }))
+  const pending = (sessionID: string) =>
+    (ctx.sync.session.data.permission[sessionID]?.length ?? 0) +
+    (ctx.sync.session.data.question[sessionID]?.length ?? 0)
+  const agents = createMemo(() => activeAgents({ sessions: sessions() ?? [], status, pending }))
+  const [stopping, setStopping] = createStore<Record<string, boolean>>({})
   const counts = createMemo(() => ({
     projects: ctx.projects.list().length,
     agents: (sessions() ?? []).length,
@@ -58,6 +72,20 @@ export function DialogDashboardV2(props: { server: ServerConnection.Any }) {
     dialog.close()
   }
 
+  const stop = (entry: AgentEntry) => {
+    if (stopping[entry.sessionID]) return
+    setStopping(entry.sessionID, true)
+    void ctx.sdk.client.v2.session
+      .interrupt({ sessionID: entry.sessionID })
+      .catch(() =>
+        showToast({
+          title: language.t("dashboard.agents.stop.failed"),
+          description: entry.title,
+        }),
+      )
+      .finally(() => setStopping(entry.sessionID, false))
+  }
+
   return (
     <Dialog size="x-large" fit>
       <DialogHeader>
@@ -66,10 +94,15 @@ export function DialogDashboardV2(props: { server: ServerConnection.Any }) {
       <DividerV2 />
       <DialogBody class="max-h-[min(560px,calc(100vh-160px))] w-full flex-col gap-5 overflow-y-auto px-4 pt-4 pb-4">
         <section class="flex flex-col gap-2">
-          <div class="flex items-center gap-2 text-[13px] font-[530] leading-none tracking-[-0.04px] text-v2-text-text-base">
+          <div class="flex flex-wrap items-center gap-2 text-[13px] font-[530] leading-none tracking-[-0.04px] text-v2-text-text-base">
             <Icon name="status-active" size="small" />
             {language.t("dashboard.agents.title")}
             <span class="text-v2-text-text-muted">{activeCount(agents())}</span>
+            <Show when={attentionCount(agents()) > 0}>
+              <span class="rounded-full bg-v2-state-bg-warning px-2 py-0.5 text-[11px] font-[530] leading-none tracking-[0.05px] text-v2-state-fg-warning">
+                {language.plural("dashboard.agents.pending", attentionCount(agents()))}
+              </span>
+            </Show>
           </div>
           <Show
             when={sessions()}
@@ -90,10 +123,10 @@ export function DialogDashboardV2(props: { server: ServerConnection.Any }) {
               <ul class="flex flex-col">
                 <For each={agents()}>
                   {(entry) => (
-                    <li>
+                    <li class="flex items-center gap-1">
                       <button
                         type="button"
-                        class="flex w-full items-center gap-3 rounded-[6px] px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover"
+                        class="flex min-w-0 flex-1 items-center gap-3 rounded-[6px] px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover"
                         onClick={() => openSession(entry)}
                       >
                         <span
@@ -121,6 +154,27 @@ export function DialogDashboardV2(props: { server: ServerConnection.Any }) {
                           </span>
                         </Show>
                       </button>
+                      <Show when={entry.pending > 0}>
+                        <span
+                          class="shrink-0 rounded-full bg-v2-state-bg-warning px-1.5 py-0.5 text-[11px] font-[530] leading-none tracking-[0.05px] text-v2-state-fg-warning"
+                          title={language.plural("dashboard.agents.pending", entry.pending)}
+                          aria-label={language.plural("dashboard.agents.pending", entry.pending)}
+                        >
+                          {entry.pending}
+                        </span>
+                      </Show>
+                      <Show when={entry.canInterrupt}>
+                        <IconButtonV2
+                          type="button"
+                          variant="ghost-muted"
+                          size="large"
+                          class="shrink-0"
+                          icon={<Icon name="stop" />}
+                          disabled={stopping[entry.sessionID]}
+                          onClick={() => stop(entry)}
+                          aria-label={language.t("dashboard.agents.stop")}
+                        />
+                      </Show>
                     </li>
                   )}
                 </For>

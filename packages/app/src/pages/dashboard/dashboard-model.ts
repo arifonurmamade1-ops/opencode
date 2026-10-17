@@ -1,5 +1,8 @@
 /**
  * FASE 18 — agent-first dashboard model.
+ * FASE 23 — mobile control: the same model marks sessions waiting for the user
+ * and sessions that own interruptible work, so any client, including a phone,
+ * can follow, approve and cancel without a keyboard.
  *
  * Pure aggregation over data the app already has (servers, projects, sessions,
  * providers, models). Panels that have no backing data are reported as
@@ -45,6 +48,10 @@ export interface AgentEntry {
   readonly title: string
   readonly directory: string
   readonly state: AgentState
+  /** Permission and question requests waiting for the user. */
+  readonly pending: number
+  /** True while the session owns active work that can be interrupted. */
+  readonly canInterrupt: boolean
   readonly model?: string
   readonly cost?: number
   readonly tokens?: number
@@ -147,24 +154,28 @@ export function tokenTotal(tokens: SessionLike["tokens"]): number | undefined {
 
 /**
  * Derives the ACTIVE AGENTS view from real sessions. A session is "active" when
- * its status is not idle; active sessions sort before idle ones, then by most
- * recently updated. Fields the report asks for that have no backing data
- * (progress percentage, per-agent tool list, result) are omitted rather than
- * invented.
+ * its status is not idle. Sessions waiting for approval sort first, so a client
+ * opens on what needs the user, then active before idle, then by most recently
+ * updated. Fields the report asks for that have no backing data (progress
+ * percentage, per-agent tool list, result) are omitted rather than invented.
  */
 export function activeAgents(input: {
   sessions: readonly SessionLike[]
   status: (sessionID: string) => StatusLike | undefined
+  pending?: (sessionID: string) => number
   limit?: number
 }): AgentEntry[] {
   const byID = new Map(input.sessions.map((session) => [session.id, session] as const))
   const entries = input.sessions.map((session): AgentEntry => {
     const tokens = tokenTotal(session.tokens)
+    const state = agentState(input.status(session.id))
     return {
       sessionID: session.id,
       title: session.title ?? session.id,
       directory: session.directory,
-      state: agentState(input.status(session.id)),
+      state,
+      pending: input.pending?.(session.id) ?? 0,
+      canInterrupt: state !== "idle",
       ...(session.model ? { model: `${session.model.providerID}/${session.model.id}` } : {}),
       ...(session.cost === undefined ? {} : { cost: session.cost }),
       ...(tokens === undefined ? {} : { tokens }),
@@ -172,6 +183,8 @@ export function activeAgents(input: {
   })
   const rank: Record<AgentState, number> = { busy: 0, retry: 1, idle: 2 }
   const sorted = [...entries].sort((a, b) => {
+    const waiting = Number(b.pending > 0) - Number(a.pending > 0)
+    if (waiting !== 0) return waiting
     const state = rank[a.state] - rank[b.state]
     if (state !== 0) return state
     const at = byID.get(a.sessionID)?.time.updated ?? 0
@@ -183,4 +196,9 @@ export function activeAgents(input: {
 
 export function activeCount(agents: readonly AgentEntry[]): number {
   return agents.filter((agent) => agent.state !== "idle").length
+}
+
+/** Sessions holding a permission request or a question for the user. */
+export function attentionCount(agents: readonly AgentEntry[]): number {
+  return agents.filter((agent) => agent.pending > 0).length
 }
