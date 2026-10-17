@@ -18,7 +18,7 @@ opencode web
 This starts a local server on `127.0.0.1` with a random available port and automatically opens OpenCode in your default browser.
 
 :::caution
-If `OPENCODE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
+If `OPENCODE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use, but binding to a non-loopback hostname (for example `--hostname 0.0.0.0` or `--mdns`) requires the password: the server refuses to start without it.
 :::
 
 :::tip[Windows Users]
@@ -86,7 +86,7 @@ To protect access, set a password using the `OPENCODE_SERVER_PASSWORD` environme
 OPENCODE_SERVER_PASSWORD=secret opencode web
 ```
 
-The username defaults to `opencode` but can be changed with `OPENCODE_SERVER_USERNAME`.
+The username defaults to `opencode` but can be changed with `OPENCODE_SERVER_USERNAME`. When listening on a non-loopback hostname, this password is required, and the network addresses printed by `opencode web` include an `auth_token` so you can open them directly from other devices.
 
 ---
 

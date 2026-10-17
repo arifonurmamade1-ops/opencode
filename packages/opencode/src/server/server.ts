@@ -7,6 +7,7 @@ import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { OpenApi } from "effect/unstable/httpapi"
 import { createServer } from "node:http"
 import { MDNS } from "./mdns"
+import { ServerAuth } from "./auth"
 import { HttpApiApp } from "./routes/instance/httpapi/server"
 import { disposeMiddleware } from "./routes/instance/httpapi/lifecycle"
 import { WebSocketTracker } from "./routes/instance/httpapi/websocket-tracker"
@@ -34,6 +35,10 @@ type ListenOptions = CorsOptions & {
   hostname: string
   mdns?: boolean
   mdnsDomain?: string
+}
+export function isLoopbackHostname(hostname: string) {
+  const value = hostname.trim().toLowerCase().replace(/^\[(.*)\]$/, "$1")
+  return value === "localhost" || value === "::1" || value === "0:0:0:0:0:0:0:1" || value.startsWith("127.")
 }
 type ListenerState = {
   scope: Scope.Scope
@@ -82,6 +87,7 @@ export async function listen(opts: ListenOptions): Promise<Listener> {
 
 const listenEffect: (opts: ListenOptions) => Effect.Effect<EffectListener, unknown> = Effect.fn("Server.listen")(
   function* (opts: ListenOptions) {
+    yield* requireRemoteAuth(opts.hostname)
     const state = yield* startWithPortFallback(opts)
     const address = yield* tcpAddress(state)
     const listenerUrl = makeURL(opts.hostname, address.port)
@@ -96,6 +102,21 @@ const listenEffect: (opts: ListenOptions) => Effect.Effect<EffectListener, unkno
     }
   },
 )
+
+// Never expose the server (and the shell access it grants) on a non-loopback
+// interface without credentials. Authentication is read from the same
+// environment source the authorization middleware enforces.
+function requireRemoteAuth(hostname: string) {
+  if (isLoopbackHostname(hostname)) return Effect.void
+  if (ServerAuth.configured()) return Effect.void
+  return Effect.die(
+    new Error(
+      `Refusing to listen on "${hostname}" without authentication. ` +
+        "Set OPENCODE_SERVER_PASSWORD to require credentials from remote clients, " +
+        "or bind to 127.0.0.1 for local-only access.",
+    ),
+  )
+}
 
 function listenerLayer(opts: ListenOptions, port: number) {
   return HttpRouter.serve(HttpApiApp.createRoutes(opts), {
@@ -154,8 +175,7 @@ function makeURL(hostname: string, port: number) {
 
 function setupMdns(opts: ListenOptions, port: number, scope: Scope.Scope) {
   return Effect.gen(function* () {
-    const publish =
-      opts.mdns && port && opts.hostname !== "127.0.0.1" && opts.hostname !== "localhost" && opts.hostname !== "::1"
+    const publish = opts.mdns && port && !isLoopbackHostname(opts.hostname)
     if (publish) {
       const unpublish = yield* Effect.cached(Effect.sync(() => MDNS.unpublish()))
       yield* Effect.sync(() => MDNS.publish(port, opts.mdnsDomain))

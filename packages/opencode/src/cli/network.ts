@@ -1,4 +1,5 @@
 import type { Argv, InferredOptionTypes } from "yargs"
+import { networkInterfaces } from "node:os"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import type { Config } from "@/config/config"
 import { Effect } from "effect"
@@ -11,7 +12,7 @@ const options = {
   },
   hostname: {
     type: "string" as const,
-    describe: "hostname to listen on",
+    describe: "hostname to listen on (non-loopback listeners require OPENCODE_SERVER_PASSWORD)",
     default: "127.0.0.1",
   },
   mdns: {
@@ -51,6 +52,29 @@ function hasBooleanArg(name: string) {
 function networkArgs() {
   const separator = process.argv.indexOf("--")
   return process.argv.slice(2, separator === -1 ? undefined : separator)
+}
+
+// LAN-facing IPv4 addresses, used to print the URLs remote clients can reach.
+export function externalIPs() {
+  const nets = networkInterfaces()
+  const results: string[] = []
+
+  for (const name of Object.keys(nets)) {
+    const net = nets[name]
+    if (!net) continue
+
+    for (const info of net) {
+      // Skip internal and non-IPv4 addresses
+      if (info.internal || info.family !== "IPv4") continue
+
+      // Skip Docker bridge networks (typically 172.x.x.x)
+      if (info.address.startsWith("172.")) continue
+
+      results.push(info.address)
+    }
+  }
+
+  return results
 }
 
 export const resolveNetworkOptions = Effect.fn("Cli.resolveNetworkOptions")(function* (args: NetworkOptions) {

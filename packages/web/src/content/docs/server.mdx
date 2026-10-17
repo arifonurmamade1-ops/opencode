@@ -38,6 +38,8 @@ opencode serve --cors http://localhost:5173 --cors https://app.example.com
 
 Set `OPENCODE_SERVER_PASSWORD` to protect the server with HTTP basic auth. The username defaults to `opencode`, or set `OPENCODE_SERVER_USERNAME` to override it. This applies to both `opencode serve` and `opencode web`.
 
+When listening on a non-loopback hostname (for example `--hostname 0.0.0.0` or `--mdns`), the password is required: the server refuses to start without it. Binding to a non-loopback hostname also makes the CLI print pairing links that embed the credentials via `?auth_token=`, so you can open them directly on other devices.
+
 ```bash
 OPENCODE_SERVER_PASSWORD=your-password opencode serve
 ```

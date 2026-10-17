@@ -1,31 +1,15 @@
 import { Effect } from "effect"
 import { UI } from "../ui"
 import { effectCmd } from "../effect-cmd"
-import { withNetworkOptions, resolveNetworkOptions } from "../network"
-import { Flag } from "@opencode-ai/core/flag/flag"
+import { externalIPs, resolveNetworkOptions, withNetworkOptions } from "../network"
+import { ServerAuth } from "@/server/auth"
 import { openUrl } from "@opencode-ai/core/open"
-import { networkInterfaces } from "os"
 
-function getNetworkIPs() {
-  const nets = networkInterfaces()
-  const results: string[] = []
-
-  for (const name of Object.keys(nets)) {
-    const net = nets[name]
-    if (!net) continue
-
-    for (const netInfo of net) {
-      // Skip internal and non-IPv4 addresses
-      if (netInfo.internal || netInfo.family !== "IPv4") continue
-
-      // Skip Docker bridge networks (typically 172.x.x.x)
-      if (netInfo.address.startsWith("172.")) continue
-
-      results.push(netInfo.address)
-    }
-  }
-
-  return results
+function authUrl(base: string, token: string | undefined) {
+  if (!token) return base
+  const result = new URL(base)
+  result.searchParams.set("auth_token", token)
+  return result.toString()
 }
 
 export const WebCommand = effectCmd({
@@ -37,30 +21,28 @@ export const WebCommand = effectCmd({
   instance: false,
   handler: Effect.fn("Cli.web")(function* (args) {
     const { Server } = yield* Effect.promise(() => import("../../server/server"))
-    if (!Flag.OPENCODE_SERVER_PASSWORD) {
-      UI.println(UI.Style.TEXT_WARNING_BOLD + "!  OPENCODE_SERVER_PASSWORD is not set; server is unsecured.")
-    }
     const opts = yield* resolveNetworkOptions(args)
     const server = yield* Effect.promise(() => Server.listen(opts))
+    const token = ServerAuth.authToken()
+    if (!token) {
+      UI.println(UI.Style.TEXT_WARNING_BOLD + "!  OPENCODE_SERVER_PASSWORD is not set; server is unsecured.")
+    }
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
 
     if (opts.hostname === "0.0.0.0") {
       // Show localhost for local access
-      const localhostUrl = `http://localhost:${server.port}`
+      const localhostUrl = authUrl(`http://localhost:${server.port}`, token)
       UI.println(UI.Style.TEXT_INFO_BOLD + "  Local access:      ", UI.Style.TEXT_NORMAL, localhostUrl)
 
       // Show network IPs for remote access
-      const networkIPs = getNetworkIPs()
-      if (networkIPs.length > 0) {
-        for (const ip of networkIPs) {
-          UI.println(
-            UI.Style.TEXT_INFO_BOLD + "  Network access:    ",
-            UI.Style.TEXT_NORMAL,
-            `http://${ip}:${server.port}`,
-          )
-        }
+      for (const ip of externalIPs()) {
+        UI.println(
+          UI.Style.TEXT_INFO_BOLD + "  Network access:    ",
+          UI.Style.TEXT_NORMAL,
+          authUrl(`http://${ip}:${server.port}`, token),
+        )
       }
 
       if (opts.mdns) {
@@ -74,7 +56,7 @@ export const WebCommand = effectCmd({
       // Open localhost in browser
       openUrl(localhostUrl).catch(() => {})
     } else {
-      const displayUrl = server.url.toString()
+      const displayUrl = authUrl(server.url.toString(), token)
       UI.println(UI.Style.TEXT_INFO_BOLD + "  Web interface:    ", UI.Style.TEXT_NORMAL, displayUrl)
       openUrl(displayUrl).catch(() => {})
     }
