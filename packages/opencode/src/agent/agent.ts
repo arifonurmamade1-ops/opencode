@@ -12,6 +12,7 @@ import { ProviderTransform } from "@/provider/transform"
 import PROMPT_GENERATE from "./generate.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
+import PROMPT_SECURITY from "./prompt/security.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
 import { Permission } from "@/permission"
@@ -212,6 +213,24 @@ const layer = Layer.effect(
             ),
             description: `Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. "src/components/**/*.tsx"), search code for keywords (eg. "API endpoints"), or answer questions about the codebase (eg. "how do API endpoints work?"). When calling this agent, specify the desired thoroughness level: "quick" for basic searches, "medium" for moderate exploration, or "very thorough" for comprehensive analysis across multiple locations and naming conventions.`,
             prompt: PROMPT_EXPLORE,
+            options: {},
+            mode: "subagent",
+            native: true,
+          },
+          security: {
+            name: "security",
+            description: `Security audit specialist. Use it to audit the project (or a specific area) for secrets, vulnerable dependencies, injection, XSS, SSRF, RCE, path traversal, authentication and permission flaws, and data exposure. Produces SECURITY_REPORT.md and never modifies application code.`,
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                edit: {
+                  "*": "deny",
+                  "SECURITY_REPORT*.md": "allow",
+                },
+              }),
+              user,
+            ),
+            prompt: PROMPT_SECURITY,
             options: {},
             mode: "subagent",
             native: true,

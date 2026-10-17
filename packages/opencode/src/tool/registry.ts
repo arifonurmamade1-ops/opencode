@@ -14,6 +14,7 @@ import { Database } from "@opencode-ai/core/database/database"
 import { TodoWriteTool } from "./todo"
 import { ScheduleTool } from "./schedule"
 import { GitTool } from "./git"
+import { SecurityTool } from "./security"
 import { WebFetchTool } from "./webfetch"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
@@ -109,6 +110,7 @@ const layer = Layer.effect(
     const todo = yield* TodoWriteTool
     const scheduletool = yield* ScheduleTool
     const gittool = yield* GitTool
+    const securitytool = yield* SecurityTool
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
@@ -225,6 +227,7 @@ const layer = Layer.effect(
           todo: Tool.init(todo),
           schedule: Tool.init(scheduletool),
           git: Tool.init(gittool),
+          security: Tool.init(securitytool),
           search: Tool.init(websearch),
           skill: Tool.init(skilltool),
           patch: Tool.init(patchtool),
@@ -250,6 +253,7 @@ const layer = Layer.effect(
             tool.todo,
             tool.schedule,
             tool.git,
+            tool.security,
             tool.search,
             tool.skill,
             tool.patch,

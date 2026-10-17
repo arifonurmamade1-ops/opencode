@@ -1,0 +1,15 @@
+Static security scan over the project files. Runs deterministic regex rules and returns candidate findings with file, line, severity, category and a remediation hint.
+
+Categories: secrets, dependencies, vulnerabilities, injection, xss, ssrf, rce, path-traversal, auth, permissions, data-exposure.
+
+Usage:
+- "scan the project for security issues" -> { }
+- "check the auth module" -> { "paths": ["src/auth"] }
+- "only look for secrets" -> { "categories": ["secrets"] }
+
+Notes:
+- Results are heuristics: verify every finding by reading the surrounding code before reporting it.
+- Secret values are masked in the output; the raw value is never printed.
+- node_modules, .git, dist and other vendor/build directories are always skipped.
+- Vulnerable dependency versions are not covered here: run `bun audit` (or `npm audit`) from the shell and include that result in the report.
+- For a full audit that produces SECURITY_REPORT.md, delegate to the "security" subagent.

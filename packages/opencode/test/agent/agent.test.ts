@@ -52,6 +52,7 @@ it.instance("returns default native agents when no config", () =>
     expect(names).toContain("plan")
     expect(names).toContain("general")
     expect(names).toContain("explore")
+    expect(names).toContain("security")
     expect(names).toContain("compaction")
     expect(names).toContain("title")
     expect(names).toContain("summary")
@@ -129,6 +130,21 @@ it.instance("explore agent asks for external directories and allows whitelisted 
     expect(
       Permission.evaluate("external_directory", path.join(Global.Path.tmp, "agent-work"), explore!.permission).action,
     ).toBe("allow")
+  }),
+)
+
+it.instance("security agent is read-only except for the report", () =>
+  Effect.gen(function* () {
+    const security = yield* load((svc) => svc.get("security"))
+    expect(security).toBeDefined()
+    expect(security?.mode).toBe("subagent")
+    expect(security?.native).toBe(true)
+    expect(security?.prompt).toBeDefined()
+    expect(evalPerm(security, "edit")).toBe("deny")
+    expect(evalPerm(security, "bash")).toBe("allow")
+    expect(Permission.evaluate("edit", "SECURITY_REPORT.md", security!.permission).action).toBe("allow")
+    expect(Permission.evaluate("edit", "SECURITY_REPORT-2026-10-17.md", security!.permission).action).toBe("allow")
+    expect(Permission.evaluate("edit", "src/index.ts", security!.permission).action).toBe("deny")
   }),
 )
 
