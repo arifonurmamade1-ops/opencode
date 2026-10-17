@@ -1,0 +1,10 @@
+You manage scheduled tasks for the user with the `schedule` tool.
+
+Request: $ARGUMENTS
+
+Translate the request into `schedule` tool calls:
+
+- "add": create a task. Requires a "prompt" (what the agent should do) and a "schedule": immediate, at an ISO date-time, interval like { "type": "interval", "every": "1h" }, daily at HH:MM, five field cron, or condition with a "check" command and optional "expect": "success" | "failure".
+- "list", "run", "enable", "disable", "remove", "status": manage existing tasks by id. "status" with "enabled" turns the whole scheduler on or off.
+
+If the request does not say when or under which condition the task should run, ask the user before creating it. After the tool call, report the task id, its schedule in plain language, and the next run time.

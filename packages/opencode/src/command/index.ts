@@ -15,6 +15,7 @@ import PROMPT_REFACTOR from "./template/refactor.txt"
 import PROMPT_TESTS from "./template/tests.txt"
 import PROMPT_DOCS from "./template/docs.txt"
 import PROMPT_GENERATE from "./template/generate.txt"
+import PROMPT_SCHEDULE from "./template/schedule.txt"
 import { LegacyEvent } from "@opencode-ai/schema/legacy-event"
 
 type State = {
@@ -58,6 +59,7 @@ export const Default = {
   TESTS: "tests",
   DOCS: "docs",
   GENERATE: "generate",
+  SCHEDULE: "schedule",
 } as const
 
 const EDIT_COMMANDS = [
@@ -90,6 +92,14 @@ const EDIT_COMMANDS = [
     name: Default.GENERATE,
     description: "generate new code from a description, defaults to current context",
     prompt: PROMPT_GENERATE,
+  },
+] as const
+
+const TASK_COMMANDS = [
+  {
+    name: Default.SCHEDULE,
+    description: "schedule a task now, at a time, on a recurring cadence, or when a condition is met",
+    prompt: PROMPT_SCHEDULE,
   },
 ] as const
 
@@ -132,7 +142,7 @@ const layer = Layer.effect(
         hints: hints(PROMPT_REVIEW),
       }
 
-      for (const item of EDIT_COMMANDS) {
+      for (const item of [...EDIT_COMMANDS, ...TASK_COMMANDS]) {
         commands[item.name] = {
           name: item.name,
           description: item.description,

@@ -1,0 +1,27 @@
+Schedule tasks that run later, on a recurring cadence, or when a condition becomes true.
+
+Actions:
+- "add": create a task. Requires "prompt" (what the agent should do) and "schedule" (when or if it runs).
+- "list": show this project's tasks with their schedule, next run and last result.
+- "run": queue a task to run now (works even while the task is disabled).
+- "enable" / "disable": resume or pause a task by id.
+- "remove": delete a task by id.
+- "status": report whether the scheduler is enabled. Pass "enabled" to turn the whole scheduler on or off.
+
+Schedule formats (local time of the machine running opencode):
+- { "type": "immediate" }: run once, as soon as possible.
+- { "type": "at", "time": "2026-01-31T14:00:00Z" }: run once at an ISO-8601 date-time.
+- { "type": "interval", "every": "30m" }: repeat at a fixed interval. Units: s, m, h, d, w.
+- { "type": "daily", "at": "08:00" }: repeat every day at a local time.
+- { "type": "cron", "expression": "0 22 * * *" }: five field cron: minute hour day-of-month month day-of-week. Supports lists, ranges, steps and names like mon-fri.
+- { "type": "condition", "check": "gh run list --status failure | grep -q .", "expect": "success", "every": "10m" }: poll a shell command and run the prompt when the result first matches. "expect" is "success" (default) or "failure"; "every" defaults to 5m.
+
+Examples:
+- "run the tests every night" -> { "action": "add", "name": "nightly tests", "prompt": "Run the full test suite and report failures.", "schedule": { "type": "daily", "at": "23:00" } }
+- "check the build at 08:00" -> { "action": "add", "prompt": "Run the build and report anything broken.", "schedule": { "type": "daily", "at": "08:00" } }
+- "when CI fails, investigate" -> { "action": "add", "prompt": "Investigate the latest failing CI run and propose a fix.", "schedule": { "type": "condition", "check": "gh run list --status failure --limit 1", "every": "15m" } }
+
+Notes:
+- Tasks are scoped to the current project directory.
+- Every run opens a fresh session named after the task, so results can be inspected with the usual session tools.
+- One-shot tasks disable themselves after running; recurring tasks keep their own next run time.
