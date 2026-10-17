@@ -1,0 +1,24 @@
+Analyze the working tree and prepare git operations. Read-only unless the action says otherwise; nothing is ever pushed.
+
+Actions:
+- "summary": change summary — files grouped by state (staged, unstaged, untracked, conflicted), line counts and the areas touched.
+- "message": propose a conventional commit message for the current changes, with the reasoning behind it.
+- "branch": recommend a branch name from the current changes or from "task"; warns when the work sits on the default branch.
+- "smart": stage everything and create a commit with the proposed message (or with "message"). Asks for permission, never pushes.
+- "conflicts": explain merge conflicts file by file, counting the lines from each side of every conflicted region.
+- "merge": prepare a merge of "base" into the current branch: blocked state, likely conflicts, ordered steps and the abort escape hatch.
+- "regression": flag changes that commonly cause regressions (removed tests, schema and config edits, large deletions).
+- "pr": draft a pull request against "base": title, body, risk notes and the exact manual publish commands.
+
+Examples:
+- "what changed here?" -> { "action": "summary" }
+- "commit this" -> { "action": "smart" }
+- "make a branch for the login fix" -> { "action": "branch", "task": "fix login redirect loop" }
+- "explain the conflicts" -> { "action": "conflicts" }
+- "how do I merge main?" -> { "action": "merge", "base": "main" }
+- "prepare the PR" -> { "action": "pr", "base": "main" }
+
+Notes:
+- "smart" refuses to run while unresolved conflicts exist; resolve them first.
+- "merge" and "pr" print the commands for you to run. opencode never pushes, merges or opens pull requests automatically.
+- "base" defaults to the repository default branch when omitted.
