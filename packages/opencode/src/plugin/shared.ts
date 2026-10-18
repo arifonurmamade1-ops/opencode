@@ -269,6 +269,13 @@ export function readPluginId(id: unknown, spec: string) {
   return value
 }
 
+export function readPluginApi(value: Record<string, unknown>, spec: string) {
+  const api = value.api
+  if (api === undefined) return
+  if (typeof api !== "number") throw new TypeError(`Plugin ${spec} has invalid api type ${typeof api}`)
+  return api
+}
+
 export function readV1Plugin(
   mod: Record<string, unknown>,
   spec: string,

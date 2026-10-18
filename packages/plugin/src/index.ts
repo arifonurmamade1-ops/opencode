@@ -17,6 +17,17 @@ import { type ToolDefinition } from "./tool.js"
 
 export * from "./tool.js"
 
+/**
+ * Stable server plugin API version implemented by this build.
+ *
+ * The contract grows additively: existing hooks keep their meaning, and new
+ * hooks/capabilities are added without breaking plugins written for older
+ * versions. A plugin may declare the version it targets via `api` on its
+ * module export; builds skip plugins that require a newer API instead of
+ * partially loading them.
+ */
+export const PLUGIN_API_VERSION = 1
+
 export type ProviderContext = {
   source: "env" | "config" | "custom" | "api"
   info: Provider
@@ -75,6 +86,12 @@ export type Plugin = (input: PluginInput, options?: PluginOptions) => Promise<Ho
 
 export type PluginModule = {
   id?: string
+  /**
+   * Plugin API version this plugin targets. Defaults to {@link PLUGIN_API_VERSION}.
+   * Plugins that require a newer API than the running build are skipped with an
+   * explicit reason instead of being loaded partially.
+   */
+  api?: number
   server: Plugin
   tui?: never
 }

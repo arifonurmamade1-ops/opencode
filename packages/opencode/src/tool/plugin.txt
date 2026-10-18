@@ -1,0 +1,17 @@
+Inspect the plugin system for this project: every plugin known to the current
+instance (built-in, file, and npm) with its plugin API version, status
+(loaded, skipped, failed), and the capabilities it registers — tools, provider
+or auth hooks, plugin hooks, and config changes.
+
+Use this to answer questions like "which plugins are active?", "what tools did
+a plugin add?", or "why was a plugin skipped?". Plugins are configured through
+`plugin` in opencode.json or auto-discovered from `.opencode/plugin(s)`, and the
+report is read-only: it never loads, installs, or modifies anything.
+
+Plugins target the stable plugin API declared by the running build. A plugin
+that requires a newer API version, or returns hooks that do not match the API,
+is skipped or failed with an explicit reason instead of being loaded partially,
+so a broken plugin cannot break the core.
+
+Pass `id` to inspect a single plugin. The inventory is per instance: restarting
+picks up config or plugin file changes.
