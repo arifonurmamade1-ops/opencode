@@ -36,6 +36,7 @@ import { ConfigVariable } from "./variable"
 import { ConfigV2Compat } from "./v2-compat"
 import { Npm } from "@opencode-ai/core/npm"
 import { withTransientReadRetry } from "@/util/effect-http-client"
+import { Hook } from "@/hook/hook"
 
 // Custom merge function that concatenates array fields instead of replacing them
 // Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
@@ -48,6 +49,10 @@ function mergeConfigConcatArrays(target: Info, source: Info): Info {
   if (target.instructions && source.instructions) {
     merged.instructions = Array.from(new Set([...target.instructions, ...source.instructions]))
   }
+  // Hooks are additive across scopes: global hooks run first, then the hooks
+  // declared by the project config.
+  const hooks = Hook.merge(target.hooks, source.hooks)
+  if (hooks) merged.hooks = hooks
   return merged
 }
 

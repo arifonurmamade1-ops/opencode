@@ -34,6 +34,7 @@ import type { WorkspaceAdapter } from "@/control-plane/types"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstallationChannel } from "@opencode-ai/core/installation/version"
+import { HooksPlugin } from "@/hook/plugin"
 
 type State = {
   hooks: Hooks[]
@@ -212,7 +213,12 @@ const layer = Layer.effect(
           $: typeof Bun === "undefined" ? undefined : Bun.$,
         }
 
-        const internal = flags.disableDefaultPlugins ? [] : internalPlugins(flags)
+        // Lifecycle hooks are user-configured (see "hooks" in opencode.json), so
+        // they stay active even when default plugins are disabled.
+        const internal: PluginInstance[] = [
+          HooksPlugin,
+          ...(flags.disableDefaultPlugins ? [] : internalPlugins(flags)),
+        ]
         for (const [index, plugin] of internal.entries()) {
           const id = plugin.name || `internal.${index}`
           const init = yield* Effect.tryPromise({

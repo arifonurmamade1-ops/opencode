@@ -5,6 +5,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { Git } from "@/git"
 import { GitIntelligence } from "@/git/intelligence"
 import { ShellID } from "./shell/id"
+import { Plugin } from "@/plugin"
 import DESCRIPTION from "./git.txt"
 import * as Tool from "./tool"
 
@@ -35,11 +36,12 @@ type Metadata = {
   files: number
 }
 
-export const GitTool = Tool.define<typeof Parameters, Metadata, Git.Service | FSUtil.Service>(
+export const GitTool = Tool.define<typeof Parameters, Metadata, Git.Service | FSUtil.Service | Plugin.Service>(
   "git",
   Effect.gen(function* () {
     const git = yield* Git.Service
     const fs = yield* FSUtil.Service
+    const plugin = yield* Plugin.Service
 
     return {
       description: DESCRIPTION,
@@ -137,7 +139,13 @@ export const GitTool = Tool.define<typeof Parameters, Metadata, Git.Service | FS
                   metadata: meta(status.length),
                 }
               const suggestion = GitIntelligence.suggestMessage(status, stats)
-              const message = params.message?.trim() || suggestion?.message || "chore: update working tree"
+              const proposed = params.message?.trim() || suggestion?.message || "chore: update working tree"
+              const before = yield* plugin.trigger(
+                "commit.before",
+                { directory: cwd, branch, files: status.length },
+                { message: proposed },
+              )
+              const message = before.message.trim() || proposed
               yield* ctx.ask({
                 permission: ShellID.ToolID,
                 patterns: ["git add *", "git commit *"],
@@ -151,6 +159,12 @@ export const GitTool = Tool.define<typeof Parameters, Metadata, Git.Service | FS
               if (commit.exitCode !== 0)
                 return { title: "git commit failed", output: `git commit failed:\n${stderr(commit)}`, metadata: meta(status.length) }
               const head = yield* git.run(["log", "-1", "--format=%h %s"], { cwd })
+              const hash = head.text().trim().split(/\s+/)[0] ?? ""
+              yield* plugin.trigger(
+                "commit.after",
+                { directory: cwd, branch, files: status.length, message, hash },
+                {},
+              )
               const output = [
                 `Committed ${head.text().trim()}`,
                 `Staged and committed ${status.length} changed file(s) on "${branch}".`,

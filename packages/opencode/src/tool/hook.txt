@@ -1,0 +1,25 @@
+Inspect the lifecycle hooks configured for this project: global hooks from the
+global config and project hooks from the project config, merged. Hooks are
+shell commands declared under `hooks` in opencode.json, keyed by stage:
+
+- before_task / after_task: a task (subagent) tool call starts or finishes
+- before_tool / after_tool: any tool call starts or finishes
+- before_model / after_model: an assistant model step starts or finishes
+- before_edit / after_edit: an edit, write, or apply_patch call starts or finishes
+- before_commit / after_commit: the git tool creates a commit
+- on_error: a session error is published
+- on_stop: a session goes idle
+
+Each stage accepts a command string, an array of commands, or
+`{ "command": "...", "timeout": 30000 }` objects (timeout in milliseconds,
+default 30s). Commands run through the platform shell in the project directory.
+The stage name is in $OPENCODE_HOOK, the project directory in
+$OPENCODE_HOOK_DIRECTORY, and $OPENCODE_HOOK_SESSION / $OPENCODE_HOOK_TOOL are
+set when known. A JSON payload for the stage is written to stdin. Global hooks
+run before project hooks, and the same stage can be extended from both scopes.
+
+before_* hooks run before their stage and can delay it (up to their timeout);
+a hook that fails or times out is logged and the stage continues, so hooks can
+never break a session. The report is read-only: it never runs hooks, and it
+shows the effective merged configuration, not where each entry came from. Pass
+`stage` to inspect a single stage.

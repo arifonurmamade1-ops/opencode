@@ -58,6 +58,17 @@ describe("PluginApi.describe", () => {
   test("reports nothing for empty hooks", () => {
     expect(PluginApi.describe({})).toEqual({ capabilities: [], hooks: [], tools: [] })
   })
+
+  test("recognizes lifecycle trigger hooks", () => {
+    const description = PluginApi.describe({
+      "model.before": async () => {},
+      "model.after": async () => {},
+      "commit.before": async () => {},
+      "commit.after": async () => {},
+    })
+    expect(description.capabilities).toEqual(["hooks"])
+    expect(description.hooks).toEqual(["commit.after", "commit.before", "model.after", "model.before"])
+  })
 })
 
 describe("PluginApi.validate", () => {
@@ -84,6 +95,18 @@ describe("PluginApi.validate", () => {
     expect(PluginApi.validate({ "tool.execute.after": 1 })).toEqual(['"tool.execute.after" must be a function'])
     expect(PluginApi.validate({ dispose: "later" })).toEqual(['"dispose" must be a function'])
     expect(PluginApi.validate({ config: {} })).toEqual(['"config" must be a function'])
+    expect(PluginApi.validate({ "commit.before": "run" })).toEqual(['"commit.before" must be a function'])
+  })
+
+  test("accepts the lifecycle trigger hooks", () => {
+    expect(
+      PluginApi.validate({
+        "model.before": async () => {},
+        "model.after": async () => {},
+        "commit.before": async () => {},
+        "commit.after": async () => {},
+      }),
+    ).toEqual([])
   })
 
   test("rejects malformed tool definitions", () => {

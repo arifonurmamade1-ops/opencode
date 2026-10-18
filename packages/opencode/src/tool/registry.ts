@@ -17,6 +17,7 @@ import { GitTool } from "./git"
 import { SecurityTool } from "./security"
 import { TelemetryTool } from "./telemetry"
 import { PluginTool } from "./plugin"
+import { HookTool } from "./hook"
 import { WebFetchTool } from "./webfetch"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
@@ -115,6 +116,7 @@ const layer = Layer.effect(
     const securitytool = yield* SecurityTool
     const telemetrytool = yield* TelemetryTool
     const plugintool = yield* PluginTool
+    const hooktool = yield* HookTool
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
@@ -234,6 +236,7 @@ const layer = Layer.effect(
           security: Tool.init(securitytool),
           telemetry: Tool.init(telemetrytool),
           plugin: Tool.init(plugintool),
+          hook: Tool.init(hooktool),
           search: Tool.init(websearch),
           skill: Tool.init(skilltool),
           patch: Tool.init(patchtool),
@@ -262,6 +265,7 @@ const layer = Layer.effect(
             tool.security,
             tool.telemetry,
             tool.plugin,
+            tool.hook,
             tool.search,
             tool.skill,
             tool.patch,

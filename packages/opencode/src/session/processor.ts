@@ -468,6 +468,19 @@ const layer = Layer.effect(
               cost: usage.cost,
             })
             yield* session.updateMessage(ctx.assistantMessage)
+            yield* plugin.trigger(
+              "model.after",
+              {
+                sessionID: ctx.sessionID,
+                messageID: ctx.assistantMessage.id,
+                agent: ctx.assistantMessage.agent,
+                model: { providerID: ctx.model.providerID, modelID: ctx.model.id },
+                finish: value.reason,
+                cost: usage.cost,
+                tokens: usage.tokens,
+              },
+              {},
+            )
             if (ctx.snapshot) {
               const patch = yield* snapshot.patch(ctx.snapshot)
               if (patch.files.length) {
@@ -651,6 +664,16 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
+            yield* plugin.trigger(
+              "model.before",
+              {
+                sessionID: ctx.sessionID,
+                messageID: ctx.assistantMessage.id,
+                agent: ctx.assistantMessage.agent,
+                model: { providerID: ctx.model.providerID, modelID: ctx.model.id },
+              },
+              {},
+            )
             const stream = llm.stream(streamInput)
 
             yield* stream.pipe(

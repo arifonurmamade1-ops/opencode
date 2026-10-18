@@ -69,6 +69,10 @@ export const Info = Schema.Struct({
       }),
     }),
   ).annotate({ description: "Local-only telemetry. Off by default; enabling it never sends data off this machine." }),
+  hooks: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)).annotate({
+    description:
+      "Lifecycle hook commands, keyed by stage: before_task, after_task, before_tool, after_tool, before_model, after_model, before_edit, after_edit, before_commit, after_commit, on_error, on_stop. Each stage takes a shell command string, or an array of command strings and { command, timeout } objects (timeout in ms, default 30000). Global config hooks and project config hooks both run; the global list runs first.",
+  }),
   autoupdate: Schema.optional(Schema.Union([Schema.Boolean, Schema.Literal("notify")])).annotate({
     description:
       "Automatically update to the latest version. Set to true to auto-update, false to disable, or 'notify' to show update notifications",

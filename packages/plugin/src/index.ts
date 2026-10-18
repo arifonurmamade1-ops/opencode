@@ -275,6 +275,28 @@ export interface Hooks {
     input: { sessionID: string; agent: string; model: Model; provider: ProviderContext; message: UserMessage },
     output: { headers: Record<string, string> },
   ) => Promise<void>
+  /**
+   * Called before each model request of a session step is sent.
+   */
+  "model.before"?: (
+    input: { sessionID: string; messageID: string; agent: string; model: { providerID: string; modelID: string } },
+    output: {},
+  ) => Promise<void>
+  /**
+   * Called after each model step finishes, with the finish reason and usage.
+   */
+  "model.after"?: (
+    input: {
+      sessionID: string
+      messageID: string
+      agent: string
+      model: { providerID: string; modelID: string }
+      finish: string
+      cost: number
+      tokens: { input: number; output: number; reasoning: number; cache: { read: number; write: number } }
+    },
+    output: {},
+  ) => Promise<void>
   "permission.ask"?: (input: Permission, output: { status: "ask" | "deny" | "allow" }) => Promise<void>
   "command.execute.before"?: (
     input: { command: string; sessionID: string; arguments: string },
@@ -295,6 +317,21 @@ export interface Hooks {
       output: string
       metadata: any
     },
+  ) => Promise<void>
+  /**
+   * Called before the git tool creates a commit. Mutate `message` to change the
+   * commit message that is committed.
+   */
+  "commit.before"?: (
+    input: { directory: string; branch: string | null; files: number },
+    output: { message: string },
+  ) => Promise<void>
+  /**
+   * Called after the git tool created a commit.
+   */
+  "commit.after"?: (
+    input: { directory: string; branch: string | null; files: number; message: string; hash: string },
+    output: {},
   ) => Promise<void>
   "experimental.chat.messages.transform"?: (
     input: {},
