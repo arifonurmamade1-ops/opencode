@@ -69,6 +69,11 @@ jobs:
         env:
           OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
 
+      - name: Audit third-party licenses
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: bun run license:audit
+
       - name: Check generated client
         if: runner.os == 'Linux'
         working-directory: packages/client
