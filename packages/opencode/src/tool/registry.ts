@@ -18,6 +18,7 @@ import { SecurityTool } from "./security"
 import { TelemetryTool } from "./telemetry"
 import { PluginTool } from "./plugin"
 import { HookTool } from "./hook"
+import { McpStatusTool } from "./mcp"
 import { WebFetchTool } from "./webfetch"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
@@ -117,6 +118,7 @@ const layer = Layer.effect(
     const telemetrytool = yield* TelemetryTool
     const plugintool = yield* PluginTool
     const hooktool = yield* HookTool
+    const mcptool = yield* McpStatusTool
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
@@ -237,6 +239,7 @@ const layer = Layer.effect(
           telemetry: Tool.init(telemetrytool),
           plugin: Tool.init(plugintool),
           hook: Tool.init(hooktool),
+          mcp: Tool.init(mcptool),
           search: Tool.init(websearch),
           skill: Tool.init(skilltool),
           patch: Tool.init(patchtool),
@@ -266,6 +269,7 @@ const layer = Layer.effect(
             tool.telemetry,
             tool.plugin,
             tool.hook,
+            tool.mcp,
             tool.search,
             tool.skill,
             tool.patch,
@@ -308,8 +312,13 @@ const layer = Layer.effect(
       permission?: PermissionV1.Ruleset
     }) {
       if (!codeMode) return
-      const ruleset = Permission.merge(input.agent.permission, input.permission ?? [])
-      const tools = Permission.visibleTools(yield* mcp.tools(), ruleset)
+      const all = yield* mcp.tools()
+      const ruleset = Permission.merge(
+        Object.values(all).flatMap((tool) => tool.rules),
+        input.agent.permission,
+        input.permission ?? [],
+      )
+      const tools = Permission.visibleTools(all, ruleset)
       if (Object.keys(tools).length === 0) return
       return codeMode.describeCatalog(tools, Object.keys(yield* mcp.clients()).map(McpCatalog.sanitize))
     })

@@ -54,11 +54,13 @@ const it = testEffect(
               name: "guide-server",
               instructions: "Use lookup before mutate.",
               tools: [],
+              rules: [],
             },
             {
               name: "tool-server",
               instructions: "Prefer search before update.",
               tools: ["tool-server_search", "tool-server_update"],
+              rules: [],
             },
           ]),
       }),

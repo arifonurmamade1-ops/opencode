@@ -90,6 +90,35 @@ describe("Config", () => {
     }),
   )
 
+  it.effect("decodes MCP access policy and per-agent server selection", () =>
+    Effect.sync(() => {
+      const info = Schema.decodeUnknownSync(ConfigV1.Info)({
+        mcp: {
+          docs: {
+            type: "remote",
+            url: "https://example.com/mcp",
+            trusted: true,
+            retry: { attempts: 3, delay: 100 },
+            rateLimit: { requests: 60, window: 60000 },
+            permission: { search: "allow", "*": "ask" },
+          },
+          local: { type: "local", command: ["server"], sandbox: true },
+        },
+        agent: { build: { mcp: { docs: true, local: false } } },
+      })
+
+      expect(info.mcp?.docs).toMatchObject({
+        type: "remote",
+        trusted: true,
+        retry: { attempts: 3, delay: 100 },
+        rateLimit: { requests: 60, window: 60000 },
+        permission: { search: "allow", "*": "ask" },
+      })
+      expect(info.mcp?.local).toMatchObject({ type: "local", sandbox: true })
+      expect(info.agent?.build?.mcp).toEqual({ docs: true, local: false })
+    }),
+  )
+
   it.effect("migrates arbitrary v1 configuration into valid v2 configuration", () =>
     Effect.sync(() => {
       FastCheck.assert(

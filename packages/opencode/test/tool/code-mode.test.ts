@@ -4,6 +4,7 @@ import type { Tool as MCPToolDef } from "@modelcontextprotocol/sdk/types.js"
 import type { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { Agent } from "@/agent/agent"
 import { MCP } from "@/mcp"
+import { McpPolicy } from "@/mcp/policy"
 import { Permission } from "@/permission"
 import { Plugin } from "@/plugin"
 import { Session } from "@/session/session"
@@ -34,6 +35,10 @@ function mcpTool(
     client: {
       callTool: async (params: { arguments?: Record<string, unknown> }) => handler(params.arguments ?? {}),
     } as unknown as MCP.McpTool["client"],
+    server: "test",
+    trusted: false,
+    rules: [],
+    policy: { retry: McpPolicy.retryPolicy(), counters: McpPolicy.counters() },
   }
 }
 
@@ -203,6 +208,10 @@ describe("code mode execute", () => {
           inputSchema: { type: "object", properties: { value: { type: "string" }, count: { type: "number" } } },
         } as MCPToolDef,
         client: { callTool: async () => ({ content: [] }) } as unknown as MCP.McpTool["client"],
+        server: "alpha",
+        trusted: false,
+        rules: [],
+        policy: { retry: McpPolicy.retryPolicy(), counters: McpPolicy.counters() },
       }
     }
     tools["zeta_only_tool"] = mcpTool("only_tool", () => "", {

@@ -1,0 +1,25 @@
+Inspect the MCP (Model Context Protocol) servers known to this session: their
+connection status, access policy, tool count, and call counters. MCP servers
+are declared under `mcp` in opencode.json.
+
+Each server can carry a policy in addition to its transport settings:
+
+- permission: default permission rules for the server's tools, keyed by tool
+  name (`*` covers every tool of the server). Values are `allow`, `ask`, or
+  `deny`, or a map from tool name to action. Agent and session permission
+  rules override these defaults.
+- retry: `{ "attempts": 3, "delay": 250 }` retries connecting and calling the
+  server on transport errors (attempts include the first try, delay in ms).
+  Tool-level errors and rate limits are never retried.
+- rateLimit: `{ "requests": 60, "window": 60000 }` caps tool calls per window;
+  calls over the limit fail immediately with a rate limit error.
+- trusted: `true` skips the permission prompt for the server's tools, unless a
+  deny rule matches. Defaults to false.
+- sandbox (local servers): `true` starts the process with a minimal
+  environment and confines its working directory to the workspace.
+
+Agents can select servers with `mcp` in their agent config, e.g.
+`{ "build": { "mcp": { "github": false } } }`.
+
+The report is read-only: it never connects, disconnects, or calls servers. Pass
+`server` to inspect one server in detail, including its tool names.

@@ -84,7 +84,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
           ...req,
           sessionID: input.session.id,
           tool: { messageID: input.processor.message.id, callID: options.toolCallId },
-          ruleset: Permission.merge(input.agent.permission, input.session.permission ?? []),
+          ruleset: Permission.merge(req.ruleset ?? [], input.agent.permission, input.session.permission ?? []),
         })
         .pipe(Effect.orDie),
   })
@@ -388,7 +388,16 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
   if (flags.experimentalCodeMode) return tools
 
   for (const [key, entry] of Object.entries(yield* mcp.tools())) {
-    const item = McpCatalog.convertTool(entry.def, entry.client, entry.timeout)
+    const decision = Permission.evaluate(
+      key,
+      "*",
+      entry.rules,
+      input.agent.permission,
+      input.session.permission ?? [],
+    )
+    if (decision.action === "deny") continue
+
+    const item = McpCatalog.convertTool(entry.def, entry.client, entry.timeout, entry.policy)
     const execute = item.execute
     if (!execute) continue
 
@@ -405,7 +414,16 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
             { args },
           )
           const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.gen(function* () {
-            yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
+            // Trusted servers run without a prompt unless a rule denies the call.
+            if (!entry.trusted || decision.action === "deny") {
+              yield* ctx.ask({
+                permission: key,
+                metadata: { server: entry.server },
+                patterns: ["*"],
+                always: ["*"],
+                ruleset: entry.rules,
+              })
+            }
             return yield* Effect.promise(() => execute(args, opts))
           }).pipe(
             Effect.withSpan("Tool.execute", {

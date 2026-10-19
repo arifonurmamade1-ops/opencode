@@ -1,5 +1,5 @@
 import * as Tool from "./tool"
-import { CallToolResultSchema, type CallToolResult } from "@modelcontextprotocol/sdk/types.js"
+import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js"
 import { Cause, Effect, Schema } from "effect"
 import { CodeMode, Tool as SandboxTool, toolError } from "@opencode-ai/codemode"
 import { MCP } from "@/mcp"
@@ -8,6 +8,7 @@ import { Agent } from "@/agent/agent"
 import { Session } from "@/session/session"
 import { Permission } from "@/permission"
 import { Plugin } from "@/plugin"
+import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 
 export const CODE_MODE_TOOL = "execute"
 
@@ -137,6 +138,8 @@ const invokeChildTool = Effect.fn("CodeMode.invokeChildTool")(function* (input: 
   args: Record<string, unknown>
   callID: string
   ctx: Tool.Context
+  /** Agent and session rules merged with every connected server's default rules. */
+  ruleset: PermissionV1.Ruleset
 }) {
   yield* input.plugin.trigger(
     "tool.execute.before",
@@ -144,29 +147,24 @@ const invokeChildTool = Effect.fn("CodeMode.invokeChildTool")(function* (input: 
     { args: input.args },
   )
   const result: CallToolResult = yield* Effect.gen(function* () {
-    yield* input.ctx.ask({ permission: input.entry.key, metadata: {}, patterns: ["*"], always: ["*"] })
-    // Deliberately mirrors McpCatalog.convertTool's transport call so the MCP service stays free of tool-loop concerns.
-    return yield* Effect.promise(async () => {
-      const raw = await input.entry.tool.client.callTool(
-        { name: input.entry.tool.def.name, arguments: input.args },
-        CallToolResultSchema,
-        {
-          resetTimeoutOnProgress: true,
-          signal: input.ctx.abort,
-          timeout: input.entry.tool.timeout,
-          // The MCP SDK only sends a progress token when this hook is present, enabling timeout resets.
-          onprogress: () => {},
-        },
-      )
-      if (raw.isError)
-        throw new Error(
-          raw.content
-            .flatMap((item) => (item.type === "text" ? [item.text] : []))
-            .filter((text) => text.trim())
-            .join("\n\n") || "MCP tool returned an error",
-        )
-      return raw
-    })
+    const decision = Permission.evaluate(input.entry.key, "*", input.ruleset)
+    // Trusted servers run without a prompt unless a rule denies the call.
+    if (!input.entry.tool.trusted || decision.action === "deny") {
+      yield* input.ctx.ask({
+        permission: input.entry.key,
+        metadata: { server: input.entry.server },
+        patterns: ["*"],
+        always: ["*"],
+        ruleset: input.entry.tool.rules,
+      })
+    }
+    return yield* Effect.promise(() =>
+      McpCatalog.call(input.entry.tool.def, input.entry.tool.client, input.args, {
+        ...input.entry.tool.policy,
+        timeout: input.entry.tool.timeout,
+        signal: input.ctx.abort,
+      }),
+    )
   }).pipe(
     Effect.withSpan("Tool.execute", {
       attributes: {
@@ -206,8 +204,13 @@ export const CodeModeTool = Tool.define(
         }
         const agent = yield* agents.get(ctx.agent)
         const session = yield* sessions.get(ctx.sessionID).pipe(Effect.orDie)
-        const ruleset = Permission.merge(agent.permission, session.permission ?? [])
-        const mcpTools = Permission.visibleTools(yield* mcp.tools(), ruleset)
+        const allTools = yield* mcp.tools()
+        const ruleset = Permission.merge(
+          Object.values(allTools).flatMap((tool) => tool.rules),
+          agent.permission,
+          session.permission ?? [],
+        )
+        const mcpTools = Permission.visibleTools(allTools, ruleset)
         const servers = Object.keys(yield* mcp.clients()).map(McpCatalog.sanitize)
         const catalog = [...groupByServer(mcpTools, servers).values()].flat()
 
@@ -226,6 +229,7 @@ export const CodeModeTool = Tool.define(
               args: (input ?? {}) as Record<string, unknown>,
               callID: `${ctx.callID ?? entry.key}/${childCalls}`,
               ctx,
+              ruleset,
             })
             return projectMcpResult(result, (attachment: Attachment) => void attachments.push(attachment))
           }).pipe(

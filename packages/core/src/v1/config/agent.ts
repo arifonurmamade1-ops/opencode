@@ -36,6 +36,10 @@ const AgentSchema = Schema.StructWithRest(
     }),
     maxSteps: Schema.optional(PositiveInt).annotate({ description: "@deprecated Use 'steps' field instead." }),
     permission: Schema.optional(ConfigPermissionV1.Info),
+    mcp: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)).annotate({
+      description:
+        "Enable or disable MCP servers for this agent. Disabled servers' tools are hidden from the agent; enabled servers' tools are granted to it.",
+    }),
   }),
   [Schema.Record(Schema.String, Schema.Any)],
 )
@@ -57,6 +61,7 @@ const KNOWN_KEYS = new Set([
   "permission",
   "disable",
   "tools",
+  "mcp",
 ])
 
 const normalize = (agent: Schema.Schema.Type<typeof AgentSchema>): Schema.Schema.Type<typeof AgentSchema> => {

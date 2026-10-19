@@ -16,6 +16,7 @@ import PROMPT_SECURITY from "./prompt/security.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
 import { Permission } from "@/permission"
+import { McpCatalog } from "@/mcp/catalog"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@opencode-ai/core/global"
 import path from "path"
@@ -310,6 +311,9 @@ const layer = Layer.effect(
           item.steps = value.steps ?? item.steps
           item.options = mergeDeep(item.options, value.options ?? {})
           item.permission = Permission.merge(item.permission, Permission.fromConfig(value.permission ?? {}))
+          if (value.mcp) {
+            item.permission = Permission.merge(item.permission, McpCatalog.selectionRules(value.mcp))
+          }
         }
 
         // Ensure Truncate.GLOB is allowed unless explicitly configured

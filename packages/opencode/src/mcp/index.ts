@@ -34,6 +34,8 @@ import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { McpCatalog } from "./catalog"
 import { McpEvent } from "@opencode-ai/schema/mcp-event"
 import { McpBrowser } from "./browser"
+import { McpPolicy } from "./policy"
+import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 
 const DEFAULT_TIMEOUT = 30_000
 const CLIENT_OPTIONS = {
@@ -116,7 +118,7 @@ type ResourceInfo = Awaited<ReturnType<MCPClient["listResources"]>>["resources"]
 type ResourceTemplateInfo = Awaited<ReturnType<MCPClient["listResourceTemplates"]>>["resourceTemplates"][number]
 type McpEntry = NonNullable<ConfigV1.Info["mcp"]>[string]
 
-function isMcpConfigured(entry: McpEntry): entry is ConfigMCPV1.Info {
+export function isMcpConfigured(entry: unknown): entry is ConfigMCPV1.Info {
   return typeof entry === "object" && entry !== null && "type" in entry
 }
 
@@ -145,12 +147,22 @@ interface State {
   clients: Record<string, MCPClient>
   defs: Record<string, MCPToolDef[]>
   instructions: Record<string, string>
+  limits: Record<string, McpPolicy.Limiter>
+  counters: Record<string, McpPolicy.Counters>
+  bridge: EffectBridge.Shape
 }
 
 export interface ServerInstructions {
   name: string
   instructions: string
   tools: string[]
+  /** Server-level default permission rules for its tools. */
+  rules: PermissionV1.Ruleset
+}
+
+/** Cumulative per-server counters plus current rate limit usage. */
+export type ServerStats = McpPolicy.Counters & {
+  rateLimit?: { requests: number; window: number; used: number }
 }
 
 /** An MCP tool in its native shape; consumers adapt it to their own tool format. */
@@ -159,6 +171,19 @@ export interface McpTool {
   readonly def: MCPToolDef
   readonly client: MCPClient
   readonly timeout?: number
+  /** Name of the server this tool belongs to. */
+  readonly server: string
+  /** Trusted servers skip the permission prompt for their tools unless a rule denies the call. */
+  readonly trusted: boolean
+  /** Server-level default permission rules; agent and session rules take precedence over them. */
+  readonly rules: PermissionV1.Ruleset
+  /** Retry, rate limit, and counters applied to calls of this tool. */
+  readonly policy: {
+    readonly retry: McpPolicy.RetryPolicy
+    readonly limiter?: McpPolicy.Limiter
+    readonly counters: McpPolicy.Counters
+    readonly onRetry?: (event: McpPolicy.RetryEvent) => void
+  }
 }
 
 export interface Interface {
@@ -166,6 +191,7 @@ export interface Interface {
   readonly clients: () => Effect.Effect<Record<string, MCPClient>>
   readonly instructions: () => Effect.Effect<ServerInstructions[]>
   readonly tools: () => Effect.Effect<Record<string, McpTool>>
+  readonly stats: () => Effect.Effect<Record<string, ServerStats>>
   readonly prompts: () => Effect.Effect<Record<string, PromptInfo & { client: string }>>
   readonly resources: (clientName?: string) => Effect.Effect<Record<string, ResourceInfo & { client: string }>>
   readonly resourceTemplates: (
@@ -233,19 +259,13 @@ const layer = Layer.effect(
 
     const DISABLED_RESULT: CreateResult = { status: { status: "disabled" } }
 
-    const connectRemote = Effect.fn("MCP.connectRemote")(function* (
+    const attemptRemote = Effect.fnUntraced(function* (
       key: string,
       mcp: ConfigMCPV1.Info & { type: "remote" },
+      url: URL,
     ) {
       const oauthDisabled = mcp.oauth === false
       const oauthConfig = typeof mcp.oauth === "object" ? mcp.oauth : undefined
-      const url = remoteURL(mcp.url)
-      if (!url) {
-        return {
-          client: undefined as MCPClient | undefined,
-          status: { status: "failed" as const, error: `Invalid MCP URL for "${key}"` },
-        }
-      }
       let authProvider: McpOAuthProvider | undefined
 
       if (!oauthDisabled) {
@@ -337,36 +357,89 @@ const layer = Layer.effect(
       }
     })
 
+    const connectRemote = Effect.fn("MCP.connectRemote")(function* (
+      key: string,
+      mcp: ConfigMCPV1.Info & { type: "remote" },
+    ) {
+      const url = remoteURL(mcp.url)
+      if (!url) {
+        return {
+          client: undefined as MCPClient | undefined,
+          status: { status: "failed" as const, error: `Invalid MCP URL for "${key}"` },
+        }
+      }
+
+      const policy = McpPolicy.retryPolicy(mcp.retry)
+      let result: { client?: MCPClient; status: Status } = {
+        client: undefined,
+        status: { status: "failed", error: "Unknown error" },
+      }
+      for (let attempt = 1; ; attempt++) {
+        result = yield* attemptRemote(key, mcp, url)
+        if (result.client) return result
+        if (result.status.status !== "failed" || attempt >= policy.attempts) return result
+        yield* Effect.logWarning("retrying MCP remote server", {
+          key,
+          attempt,
+          delay: policy.delay,
+          error: result.status.error,
+        })
+        if (policy.delay > 0) yield* Effect.sleep(policy.delay)
+      }
+    })
+
     const connectLocal = Effect.fn("MCP.connectLocal")(function* (
       key: string,
       mcp: ConfigMCPV1.Info & { type: "local" },
     ) {
       const [cmd, ...args] = mcp.command
       const baseDir = yield* InstanceState.directory
-      const cwd = mcp.cwd ? path.resolve(baseDir, mcp.cwd) : baseDir
-      const transport = new StdioClientTransport({
-        stderr: "pipe",
-        command: cmd,
-        args,
-        cwd,
-        env: {
-          ...process.env,
-          ...(cmd === "opencode" ? { BUN_BE_BUN: "1" } : {}),
-          ...mcp.environment,
-        },
-      })
+      const confined = mcp.sandbox
+        ? McpPolicy.sandboxCwd(baseDir, mcp.cwd)
+        : { ok: true as const, path: mcp.cwd ? path.resolve(baseDir, mcp.cwd) : baseDir }
+      if (!confined.ok) {
+        return {
+          client: undefined as MCPClient | undefined,
+          status: { status: "failed" as const, error: confined.error },
+        }
+      }
 
+      const env = {
+        ...(mcp.sandbox ? McpPolicy.sandboxEnvironment(process.env, mcp.environment) : { ...process.env, ...mcp.environment }),
+        ...(cmd === "opencode" && mcp.environment?.BUN_BE_BUN === undefined ? { BUN_BE_BUN: "1" } : {}),
+      }
+      const policy = McpPolicy.retryPolicy(mcp.retry)
       const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
-      return yield* connectTransport(transport, connectTimeout).pipe(
-        Effect.map((client): { client: MCPClient | undefined; status: Status } => ({
-          client,
-          status: { status: "connected" },
-        })),
-        Effect.catch((error): Effect.Effect<{ client: MCPClient | undefined; status: Status }> => {
-          const msg = error instanceof Error ? error.message : String(error)
-          return Effect.succeed({ client: undefined, status: { status: "failed", error: msg } })
-        }),
-      )
+
+      for (let attempt = 1; ; attempt++) {
+        const transport = new StdioClientTransport({
+          stderr: "pipe",
+          command: cmd,
+          args,
+          cwd: confined.path,
+          env,
+        })
+
+        const result = yield* connectTransport(transport, connectTimeout).pipe(
+          Effect.map((client): { client: MCPClient | undefined; status: Status } => ({
+            client,
+            status: { status: "connected" },
+          })),
+          Effect.catch((error): Effect.Effect<{ client: MCPClient | undefined; status: Status }> => {
+            const msg = error instanceof Error ? error.message : String(error)
+            return Effect.succeed({ client: undefined, status: { status: "failed", error: msg } })
+          }),
+        )
+        if (result.client) return result
+        if (result.status.status !== "failed" || attempt >= policy.attempts) return result
+        yield* Effect.logWarning("retrying MCP local server", {
+          key,
+          attempt,
+          delay: policy.delay,
+          error: result.status.error,
+        })
+        if (policy.delay > 0) yield* Effect.sleep(policy.delay)
+      }
     })
 
     const create = Effect.fn("MCP.create")(
@@ -489,6 +562,29 @@ const layer = Layer.effect(
       }
     }
 
+    const counterFor = (s: State, name: string) => (s.counters[name] ??= McpPolicy.counters())
+
+    const limiterFor = (s: State, name: string, config?: { requests?: number; window?: number }) => {
+      const policy = McpPolicy.rateLimitPolicy(config)
+      if (!policy) {
+        delete s.limits[name]
+        return undefined
+      }
+      const existing = s.limits[name]
+      if (existing && existing.policy.requests === policy.requests && existing.policy.window === policy.window) {
+        return existing
+      }
+      const limiter = new McpPolicy.Limiter(policy)
+      s.limits[name] = limiter
+      return limiter
+    }
+
+    // Runtime-added config wins over the static config entry, mirroring getMcpConfig.
+    function effectiveConfig(s: State, config: Record<string, McpEntry>, name: string): ConfigMCPV1.Info | undefined {
+      const staticEntry = config[name]
+      return s.config[name] ?? (staticEntry && isMcpConfigured(staticEntry) ? staticEntry : undefined)
+    }
+
     const state = yield* InstanceState.make<State>(
       Effect.fn("MCP.state")(function* () {
         const cfg = yield* cfgSvc.get()
@@ -500,6 +596,9 @@ const layer = Layer.effect(
           clients: {},
           defs: {},
           instructions: {},
+          limits: {},
+          counters: {},
+          bridge,
         }
 
         yield* Effect.forEach(
@@ -519,10 +618,13 @@ const layer = Layer.effect(
               const result = yield* create(key, mcp)
               s.status[key] = result.status
               if (result.mcpClient) {
+                counterFor(s, key).connects += 1
                 s.clients[key] = result.mcpClient
                 s.defs[key] = result.defs!
                 if (result.instructions) s.instructions[key] = result.instructions
                 watch(s, key, result.mcpClient, bridge, mcp.timeout)
+              } else if (result.status.status === "failed") {
+                counterFor(s, key).connectFailures += 1
               }
             }),
           { concurrency: "unbounded" },
@@ -614,14 +716,19 @@ const layer = Layer.effect(
 
     const instructions = Effect.fn("MCP.instructions")(function* () {
       const s = yield* InstanceState.get(state)
+      const config = (yield* cfgSvc.get()).mcp ?? {}
       return Object.entries(s.instructions)
         .filter(([name]) => s.status[name]?.status === "connected")
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([name, item]) => ({
-          name,
-          instructions: item,
-          tools: (s.defs[name] ?? []).map((tool) => McpCatalog.toolName(name, tool.name)),
-        }))
+        .map(([name, item]) => {
+          const effective = effectiveConfig(s, config, name)
+          return {
+            name,
+            instructions: item,
+            tools: (s.defs[name] ?? []).map((tool) => McpCatalog.toolName(name, tool.name)),
+            rules: McpCatalog.permissionRules(name, effective?.permission),
+          }
+        })
     })
 
     const createAndStore = Effect.fn("MCP.createAndStore")(function* (name: string, mcp: ConfigMCPV1.Info) {
@@ -630,11 +737,13 @@ const layer = Layer.effect(
 
       s.status[name] = result.status
       if (!result.mcpClient) {
+        if (result.status.status === "failed") counterFor(s, name).connectFailures += 1
         yield* closeClient(s, name)
         delete s.clients[name]
         return result.status
       }
 
+      counterFor(s, name).connects += 1
       return yield* storeClient(s, name, result.mcpClient, result.defs!, result.instructions, mcp.timeout)
     })
 
@@ -680,8 +789,46 @@ const layer = Layer.effect(
           continue
         }
         const timeout = requestTimeout(s, clientName, mcpConfig, defaultTimeout)
+        const effective = effectiveConfig(s, config, clientName)
+        const rules = McpCatalog.permissionRules(clientName, effective?.permission)
+        const trusted = effective?.trusted === true
+        const retry = McpPolicy.retryPolicy(effective?.retry)
+        const limiter = limiterFor(s, clientName, effective?.rateLimit)
+        const counters = counterFor(s, clientName)
+        const onRetry = (event: McpPolicy.RetryEvent) =>
+          s.bridge.fork(
+            Effect.logWarning("MCP call retry", {
+              server: clientName,
+              attempt: event.attempt,
+              delay: event.delay,
+              error: event.error instanceof Error ? event.error.message : String(event.error),
+            }).pipe(Effect.ignore),
+          )
         for (const def of listed) {
-          result[McpCatalog.toolName(clientName, def.name)] = { def, client, timeout }
+          result[McpCatalog.toolName(clientName, def.name)] = {
+            def,
+            client,
+            timeout,
+            server: clientName,
+            trusted,
+            rules,
+            policy: { retry, limiter, counters, onRetry },
+          }
+        }
+      }
+      return result
+    })
+
+    const stats = Effect.fn("MCP.stats")(function* () {
+      const s = yield* InstanceState.get(state)
+      const config = (yield* cfgSvc.get()).mcp ?? {}
+      const names = new Set([...Object.keys(config), ...Object.keys(s.config)])
+      const result: Record<string, ServerStats> = {}
+      for (const name of names) {
+        const limiter = s.limits[name]
+        result[name] = {
+          ...counterFor(s, name),
+          ...(limiter ? { rateLimit: { ...limiter.policy, used: limiter.used } } : {}),
         }
       }
       return result
@@ -974,6 +1121,7 @@ const layer = Layer.effect(
       clients,
       instructions,
       tools,
+      stats,
       prompts,
       resources,
       resourceTemplates,

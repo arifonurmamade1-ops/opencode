@@ -1,7 +1,41 @@
 export * as ConfigMCPV1 from "./mcp"
 
 import { Schema } from "effect"
-import { PositiveInt } from "../../schema"
+import { NonNegativeInt, PositiveInt } from "../../schema"
+import { ConfigPermissionV1 } from "./permission"
+
+export const Retry = Schema.Struct({
+  attempts: Schema.optional(PositiveInt).annotate({
+    description: "Total attempts, including the first, for connecting to and calling this server. Defaults to 1 (no retry).",
+  }),
+  delay: Schema.optional(NonNegativeInt).annotate({
+    description: "Delay in milliseconds between attempts. Defaults to 250.",
+  }),
+}).annotate({ identifier: "McpRetryConfig" })
+export type Retry = Schema.Schema.Type<typeof Retry>
+
+export const RateLimit = Schema.Struct({
+  requests: PositiveInt.annotate({ description: "Maximum number of tool calls allowed per window." }),
+  window: PositiveInt.annotate({ description: "Window length in milliseconds." }),
+}).annotate({ identifier: "McpRateLimitConfig" })
+export type RateLimit = Schema.Schema.Type<typeof RateLimit>
+
+export const Policy = Schema.Struct({
+  permission: Schema.optional(ConfigPermissionV1.Info).annotate({
+    description:
+      "Default permission rules for this server's tools, keyed by tool name (or * for every tool of the server). Values are allow, ask, deny, or a map from tool name to action.",
+  }),
+  retry: Schema.optional(Retry).annotate({
+    description: "Retry policy for connecting to and calling this server.",
+  }),
+  rateLimit: Schema.optional(RateLimit).annotate({
+    description: "Maximum tool calls per time window. Calls over the limit fail immediately with a rate limit error.",
+  }),
+  trusted: Schema.optional(Schema.Boolean).annotate({
+    description:
+      "Trusted servers skip the permission prompt for their tools. Explicit deny rules still apply. Defaults to false.",
+  }),
+}).annotate({ identifier: "McpPolicyConfig" })
 
 export const Local = Schema.Struct({
   type: Schema.Literal("local").annotate({ description: "Type of MCP server connection" }),
@@ -17,9 +51,14 @@ export const Local = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean).annotate({
     description: "Enable or disable the MCP server on startup",
   }),
-  timeout: Schema.optional(PositiveInt).annotate({
-    description: "Timeout in ms for MCP server requests. Defaults to 5000 (5 seconds) if not specified.",
+  sandbox: Schema.optional(Schema.Boolean).annotate({
+    description:
+      "Run the server with a minimal environment (only PATH and a few system variables are inherited; use environment for anything else) and confine it to the workspace directory. Defaults to false.",
   }),
+  timeout: Schema.optional(PositiveInt).annotate({
+    description: "Timeout in ms for MCP server requests. Defaults to 30000 (30 seconds) if not specified.",
+  }),
+  ...Policy.fields,
 }).annotate({ identifier: "McpLocalConfig" })
 export type Local = Schema.Schema.Type<typeof Local>
 
@@ -54,8 +93,9 @@ export const Remote = Schema.Struct({
     description: "OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection.",
   }),
   timeout: Schema.optional(PositiveInt).annotate({
-    description: "Timeout in ms for MCP server requests. Defaults to 5000 (5 seconds) if not specified.",
+    description: "Timeout in ms for MCP server requests. Defaults to 30000 (30 seconds) if not specified.",
   }),
+  ...Policy.fields,
 }).annotate({ identifier: "McpRemoteConfig" })
 export type Remote = Schema.Schema.Type<typeof Remote>
 

@@ -245,7 +245,7 @@ it.instance("instructions() returns non-empty connected server instructions with
     yield* mcp.add("blank-server", remote(blank.url))
 
     expect(yield* mcp.instructions()).toEqual([
-      { name: "guide-server", instructions: "Use lookup before mutate.", tools: ["guide-server_test_tool"] },
+      { name: "guide-server", instructions: "Use lookup before mutate.", tools: ["guide-server_test_tool"], rules: [] },
     ])
     yield* mcp.disconnect("guide-server")
     expect(yield* mcp.instructions()).toEqual([])

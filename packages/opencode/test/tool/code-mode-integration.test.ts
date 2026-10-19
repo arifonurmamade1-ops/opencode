@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test"
 import { CodeModeTool, describeCatalog } from "@/tool/code-mode"
 import { McpCatalog } from "@/mcp/catalog"
+import { McpPolicy } from "@/mcp/policy"
 import { Agent } from "@/agent/agent"
 import { MCP } from "@/mcp"
 import { Plugin } from "@/plugin"
@@ -135,7 +136,14 @@ async function buildTool() {
   const listed = (await client.listTools()).tools as MCPToolDef[]
   const mcpTools: Record<string, MCP.McpTool> = {}
   for (const def of listed) {
-    mcpTools[McpCatalog.toolName(SERVER, def.name)] = { def, client: client as unknown as Client }
+    mcpTools[McpCatalog.toolName(SERVER, def.name)] = {
+      def,
+      client: client as unknown as Client,
+      server: SERVER,
+      trusted: false,
+      rules: [],
+      policy: { retry: McpPolicy.retryPolicy(), counters: McpPolicy.counters() },
+    }
   }
 
   const layer = Layer.mergeAll(

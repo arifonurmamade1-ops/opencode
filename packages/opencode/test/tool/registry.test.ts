@@ -20,6 +20,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { MCP } from "@/mcp"
+import { McpPolicy } from "@/mcp/policy"
 import type { Tool as MCPToolDef } from "@modelcontextprotocol/sdk/types.js"
 
 const configLayer = TestConfig.layer({
@@ -74,6 +75,10 @@ const withCodeMode = testEffect(
                 inputSchema: { type: "object", properties: { city: { type: "string" } }, required: ["city"] },
               } as MCPToolDef,
               client: {} as MCP.McpTool["client"],
+              server: "weather",
+              trusted: false,
+              rules: [],
+              policy: { retry: McpPolicy.retryPolicy(), counters: McpPolicy.counters() },
             },
           }),
         clients: () => Effect.succeed({ weather: {} as any }),
