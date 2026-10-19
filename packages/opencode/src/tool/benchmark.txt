@@ -1,0 +1,23 @@
+Run OpenCode's internal benchmark suite and compare recorded runs.
+
+Use this tool when the user wants objective measurements of OpenCode itself
+(coding, debugging, refactoring, browser automation, UI testing, multi-agent,
+long-running tasks, recovery, context handling, security, model routing, cost
+efficiency) or wants to compare two recorded runs, for example before and after
+an upgrade.
+
+Actions:
+- run: execute the case suite now and store the result. Optional `label` names
+  the run, `cases` filters by case id or category, `repeats` (1-5) repeats each
+  case and records the median.
+- cases: list every case with the metrics it records.
+- runs: list stored runs, newest first.
+- show: print one stored run (defaults to the most recent).
+- compare: compare two runs (A baseline, B candidate; defaults to the two most
+  recent) and report the measured deltas.
+
+The comparison never claims a build is superior on its own: it applies a noise
+band to timing-like metrics and marks runs with fewer than three samples as
+descriptive only. Cases that need an interactive terminal or a real browser
+report "unavailable" with the reason instead of invented numbers. Everything
+runs locally in the opencode process and no model is called.

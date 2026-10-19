@@ -16,6 +16,7 @@ import { ScheduleTool } from "./schedule"
 import { GitTool } from "./git"
 import { SecurityTool } from "./security"
 import { TelemetryTool } from "./telemetry"
+import { BenchmarkTool } from "./benchmark"
 import { PluginTool } from "./plugin"
 import { HookTool } from "./hook"
 import { McpStatusTool } from "./mcp"
@@ -63,6 +64,8 @@ import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { McpCatalog } from "@/mcp/catalog"
 import { Scheduler } from "@/scheduler/scheduler"
 import { Git } from "@/git"
+import { Git as CoreGit } from "@opencode-ai/core/git"
+import { Benchmark } from "@/benchmark/benchmark"
 
 export function webSearchEnabled(providerID: ProviderV2.ID, flags = { exa: false, parallel: false }) {
   return (
@@ -116,6 +119,7 @@ const layer = Layer.effect(
     const gittool = yield* GitTool
     const securitytool = yield* SecurityTool
     const telemetrytool = yield* TelemetryTool
+    const benchmarktool = yield* BenchmarkTool
     const plugintool = yield* PluginTool
     const hooktool = yield* HookTool
     const mcptool = yield* McpStatusTool
@@ -237,6 +241,7 @@ const layer = Layer.effect(
           git: Tool.init(gittool),
           security: Tool.init(securitytool),
           telemetry: Tool.init(telemetrytool),
+          benchmark: Tool.init(benchmarktool),
           plugin: Tool.init(plugintool),
           hook: Tool.init(hooktool),
           mcp: Tool.init(mcptool),
@@ -267,6 +272,7 @@ const layer = Layer.effect(
             tool.git,
             tool.security,
             tool.telemetry,
+            tool.benchmark,
             tool.plugin,
             tool.hook,
             tool.mcp,
@@ -469,6 +475,8 @@ export const node = LayerNode.make({
     Todo.node,
     Scheduler.node,
     Git.node,
+    // Task tool worktrees use the core git service (`@opencode/GitV2`).
+    CoreGit.node,
     Agent.node,
     Skill.node,
     Session.node,
@@ -486,6 +494,7 @@ export const node = LayerNode.make({
     MCP.node,
     Database.node,
     Ripgrep.node,
+    Benchmark.node,
   ],
 })
 
