@@ -15,6 +15,7 @@
     "lint": "oxlint",
     "typecheck": "bun turbo typecheck",
     "license:audit": "bun run packages/opencode/script/license-audit.ts",
+    "compatibility:audit": "bun run --cwd packages/opencode script/compatibility-audit.ts",
     "upgrade-opentui": "bun run script/upgrade-opentui.ts",
     "postinstall": "bun run --cwd packages/core fix-node-pty",
     "prepare": "husky",
