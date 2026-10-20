@@ -32,15 +32,17 @@ export async function extractSnapshot(root: string): Promise<Snapshot> {
 }
 
 /**
- * Reads the top-level commands registered in `src/index.ts`, plus the nested
- * commands, aliases, and flags declared by the command modules. The identity
- * includes the defining file so two `list` subcommands do not collide; moving a
- * command to another module is therefore a contract change.
+ * Reads the top-level commands registered in `src/cli/main.ts`, plus the nested
+ * commands, aliases, and flags declared by the command modules. `src/index.ts`
+ * is only the startup shim, so the command tree lives one level deeper. The
+ * identity includes the defining file so two `list` subcommands do not collide;
+ * moving a command to another module is therefore a contract change.
  */
 export async function extractCli(packageDir: string): Promise<Snapshot["cli"]> {
   const srcDir = join(packageDir, "src")
-  const cmdDir = join(srcDir, "cli", "cmd")
-  const index = await Bun.file(join(srcDir, "index.ts")).text()
+  const entryDir = join(srcDir, "cli")
+  const cmdDir = join(entryDir, "cmd")
+  const index = await Bun.file(join(entryDir, "main.ts")).text()
 
   const imports = new Map<string, string>()
   for (const match of index.matchAll(/import\s*\{\s*([A-Za-z_$][\w$]*)\s*\}\s*from\s*"([^"]+)"/g)) {
@@ -55,8 +57,8 @@ export async function extractCli(packageDir: string): Promise<Snapshot["cli"]> {
   for (const match of index.matchAll(/\.command\(\s*([A-Za-z_$][\w$]*)\s*\)/g)) {
     const binding = match[1]
     const specifier = imports.get(binding)
-    if (!specifier) throw new Error(`CLI command ${binding} has no local import in ${srcDir}/index.ts`)
-    const file = resolveCliModule(srcDir, specifier)
+    if (!specifier) throw new Error(`CLI command ${binding} has no local import in ${entryDir}/main.ts`)
+    const file = resolveCliModule(entryDir, specifier)
     const text = await Bun.file(file).text()
     const start = text.indexOf(`export const ${binding} =`)
     if (start < 0) throw new Error(`cannot find the definition of ${binding} in ${file}`)

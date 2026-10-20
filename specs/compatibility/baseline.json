@@ -738,6 +738,7 @@
     "dev:web",
     "license:audit",
     "lint",
+    "performance:audit",
     "postinstall",
     "prepare",
     "random",

@@ -4,23 +4,36 @@ import { Flag } from "@opencode-ai/core/flag/flag"
 import os from "os"
 import { Duration, Effect } from "effect"
 import { effectCmd } from "../../effect-cmd"
-import { cmd } from "../cmd"
-import { ConfigCommand } from "./config"
-import { FileCommand } from "./file"
-import { LSPCommand } from "./lsp"
-import { RipgrepCommand } from "./ripgrep"
-import { ScrapCommand } from "./scrap"
-import { SkillCommand } from "./skill"
-import { SnapshotCommand } from "./snapshot"
-import { AgentCommand } from "./agent"
-import { StartupCommand } from "./startup"
-import { V2Command } from "./v2"
+import { cmd, lazyCmd } from "../cmd"
 
-export const DebugCommand = cmd({
+export const DebugCommand = lazyCmd<{}, {}>({
   command: "debug",
   describe: "debugging and troubleshooting tools",
-  builder: (yargs) =>
-    yargs
+  builder: async (yargs) => {
+    const [
+      { ConfigCommand },
+      { FileCommand },
+      { LSPCommand },
+      { RipgrepCommand },
+      { ScrapCommand },
+      { SkillCommand },
+      { SnapshotCommand },
+      { AgentCommand },
+      { StartupCommand },
+      { V2Command },
+    ] = await Promise.all([
+      import("./config"),
+      import("./file"),
+      import("./lsp"),
+      import("./ripgrep"),
+      import("./scrap"),
+      import("./skill"),
+      import("./snapshot"),
+      import("./agent"),
+      import("./startup"),
+      import("./v2"),
+    ])
+    return yargs
       .command(ConfigCommand)
       .command(LSPCommand)
       .command(RipgrepCommand)
@@ -34,7 +47,8 @@ export const DebugCommand = cmd({
       .command(InfoCommand)
       .command(PathsCommand)
       .command(WaitCommand)
-      .demandCommand(),
+      .demandCommand()
+  },
   async handler() {},
 })
 

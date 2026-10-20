@@ -79,6 +79,11 @@ jobs:
         timeout-minutes: 5
         run: bun run compatibility:audit
 
+      - name: Audit startup performance
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: bun run performance:audit --check
+
       - name: Check generated client
         if: runner.os == 'Linux'
         working-directory: packages/client

@@ -17,20 +17,20 @@ push.
 
 ## What is covered
 
-| Surface                             | Snapshot                                                                       | Breaking when                   |
-| ----------------------------------- | ------------------------------------------------------------------------------ | ------------------------------- |
-| CLI commands, aliases, global flags | top-level commands in `packages/opencode/src/index.ts`, flags registered there | removed                         |
-| CLI subcommands and command flags   | `command:` and `.option(...)` in `packages/opencode/src/cli/cmd/**`            | removed                         |
-| Config keys                         | top-level fields of `ConfigV1.Info`                                            | removed                         |
-| Agent config fields                 | fields of `ConfigAgentV1.Info`                                                 | removed                         |
-| MCP config fields                   | fields of `ConfigMCPV1.Local` and `ConfigMCPV1.Remote`                         | removed                         |
-| Built-in agents                     | names in `packages/opencode/src/agent/agent.ts`                                | removed                         |
-| Built-in tools                      | ids from `Tool.define(...)` in `packages/opencode/src/tool/**`                 | removed                         |
-| Plugin API                          | `PLUGIN_API_VERSION` and the `Hooks` interface in `packages/plugin`            | removed hook, changed version   |
-| TUI config                          | fields of the `TuiConfig.Info` schema                                          | removed                         |
-| TUI keybinds                        | actions and defaults in `TuiKeybind.Definitions`                               | removed action, changed default |
-| HTTP API                            | `METHOD /path` from `OpenCodeHttpApi`                                          | removed                         |
-| Root workflow scripts               | `scripts` in the root `package.json`                                           | removed                         |
+| Surface                             | Snapshot                                                                          | Breaking when                   |
+| ----------------------------------- | --------------------------------------------------------------------------------- | ------------------------------- |
+| CLI commands, aliases, global flags | top-level commands in `packages/opencode/src/cli/main.ts`, flags registered there | removed                         |
+| CLI subcommands and command flags   | `command:` and `.option(...)` in `packages/opencode/src/cli/cmd/**`               | removed                         |
+| Config keys                         | top-level fields of `ConfigV1.Info`                                               | removed                         |
+| Agent config fields                 | fields of `ConfigAgentV1.Info`                                                    | removed                         |
+| MCP config fields                   | fields of `ConfigMCPV1.Local` and `ConfigMCPV1.Remote`                            | removed                         |
+| Built-in agents                     | names in `packages/opencode/src/agent/agent.ts`                                   | removed                         |
+| Built-in tools                      | ids from `Tool.define(...)` in `packages/opencode/src/tool/**`                    | removed                         |
+| Plugin API                          | `PLUGIN_API_VERSION` and the `Hooks` interface in `packages/plugin`               | removed hook, changed version   |
+| TUI config                          | fields of the `TuiConfig.Info` schema                                             | removed                         |
+| TUI keybinds                        | actions and defaults in `TuiKeybind.Definitions`                                  | removed action, changed default |
+| HTTP API                            | `METHOD /path` from `OpenCodeHttpApi`                                             | removed                         |
+| Root workflow scripts               | `scripts` in the root `package.json`                                              | removed                         |
 
 Providers, models, and their capabilities are dynamic data from models.dev, so
 they are not frozen in the baseline. Provider configuration itself is covered by
