@@ -10,6 +10,7 @@ import { Auth } from "../auth"
 import { ProviderTransform } from "@/provider/transform"
 
 import PROMPT_GENERATE from "./generate.txt"
+import PROMPT_AUTONOMOUS from "./prompt/autonomous.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SECURITY from "./prompt/security.txt"
@@ -178,6 +179,24 @@ const layer = Layer.effect(
               }),
               user,
             ),
+            mode: "primary",
+            native: true,
+          },
+          autonomous: {
+            name: "autonomous",
+            description:
+              "Controlled autonomous task mode. Executes a request end to end with explicit evidence gates and writes a delivery artifact.",
+            options: {},
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                question: "deny",
+                plan_enter: "deny",
+                plan_exit: "deny",
+              }),
+              user,
+            ),
+            prompt: PROMPT_AUTONOMOUS,
             mode: "primary",
             native: true,
           },

@@ -50,6 +50,7 @@ it.instance("returns default native agents when no config", () =>
     const names = agents.map((a) => a.name)
     expect(names).toContain("build")
     expect(names).toContain("plan")
+    expect(names).toContain("autonomous")
     expect(names).toContain("general")
     expect(names).toContain("explore")
     expect(names).toContain("security")
@@ -67,6 +68,20 @@ it.instance("build agent has correct default properties", () =>
     expect(build?.native).toBe(true)
     expect(evalPerm(build, "edit")).toBe("allow")
     expect(evalPerm(build, "bash")).toBe("allow")
+  }),
+)
+
+it.instance("autonomous agent has controlled delivery permissions", () =>
+  Effect.gen(function* () {
+    const autonomous = yield* load((svc) => svc.get("autonomous"))
+    expect(autonomous).toBeDefined()
+    expect(autonomous?.mode).toBe("primary")
+    expect(autonomous?.native).toBe(true)
+    expect(autonomous?.prompt).toContain("AUTONOMOUS TASK mode")
+    expect(evalPerm(autonomous, "edit")).toBe("allow")
+    expect(evalPerm(autonomous, "bash")).toBe("allow")
+    expect(evalPerm(autonomous, "task")).toBe("allow")
+    expect(evalPerm(autonomous, "question")).toBe("deny")
   }),
 )
 

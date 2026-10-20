@@ -173,6 +173,30 @@ describe("tool.registry", () => {
     }),
   )
 
+  it.instance("exposes autonomous_task only to the autonomous agent", () =>
+    Effect.gen(function* () {
+      const registry = yield* ToolRegistry.Service
+      const agents = yield* Agent.Service
+      const build = yield* agents.get("build")
+      const autonomous = yield* agents.get("autonomous")
+      if (!build || !autonomous) throw new Error("expected build and autonomous agents")
+
+      const buildTools = yield* registry.tools({
+        providerID: ProviderV2.ID.opencode,
+        modelID: ModelV2.ID.make("test"),
+        agent: build,
+      })
+      const autonomousTools = yield* registry.tools({
+        providerID: ProviderV2.ID.opencode,
+        modelID: ModelV2.ID.make("test"),
+        agent: autonomous,
+      })
+
+      expect(buildTools.map((tool) => tool.id)).not.toContain("autonomous_task")
+      expect(autonomousTools.map((tool) => tool.id)).toContain("autonomous_task")
+    }),
+  )
+
   it.instance("loads tools from .opencode/tool (singular)", () =>
     Effect.gen(function* () {
       const test = yield* TestInstance

@@ -88,6 +88,8 @@ Options:
       --share        share the session                                                     [boolean]
   -m, --model        model to use in the format of provider/model                           [string]
       --agent        agent to use                                                           [string]
+      --autonomous   run in controlled autonomous task mode (equivalent to --agent autonomous)
+                                                                          [boolean] [default: false]
       --format       format: default (formatted) or json (raw JSON events)
                                           [string] [choices: "default", "json"] [default: "default"]
   -f, --file         file(s) to attach to message                                            [array]

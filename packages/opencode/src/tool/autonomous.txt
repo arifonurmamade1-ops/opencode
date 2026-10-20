@@ -1,0 +1,20 @@
+Update the durable state for the current AUTONOMOUS TASK.
+
+Use this tool on every autonomous task. It records the 12 tracked stages, enforces evidence, and writes the delivery artifact. Delivery (`action: "deliver"`) is the final action. Only the `autonomous` agent can use it.
+
+Actions:
+- `start`: create the task. Requires `objective` and at least one acceptance criterion in `acceptance`.
+- `update`: mark a stage `in_progress`, `done`, or `skipped`. `done` requires `evidence`; `skipped` requires `reason`. Use `block` for blockers.
+- `block`: record a real blocker with `what`, `why`, and the information or action needed in `needs`. This writes a BLOCKED artifact.
+- `deliver`: verify every required stage has evidence and write the final artifact. This fails if any stage is unresolved or a required stage was skipped.
+- `status`: print the current checklist.
+
+Stages, in order:
+understand, research, plan, agents, implement, run, test, browser, fix, security, diff, artifact.
+
+Rules:
+- Evidence must be concrete: the command that ran and its result, a file path, a URL, or a finding. Never write "done" as evidence.
+- Required stages that cannot be skipped: understand, plan, implement, test, security, diff.
+- `run`, `browser`, `fix`, `research`, and `agents` may be skipped only with an explicit reason.
+- On a real blocker, call `block` and stop. The final response must report BLOCKED and the exact cause. Never claim delivery.
+- Call `deliver` only after the work is complete and verified. It writes `.opencode/autonomous/<task-id>.md`.

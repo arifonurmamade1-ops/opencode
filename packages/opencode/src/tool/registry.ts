@@ -15,6 +15,7 @@ import { TodoWriteTool } from "./todo"
 import { ScheduleTool } from "./schedule"
 import { GitTool } from "./git"
 import { SecurityTool } from "./security"
+import { AutonomousTaskTool } from "./autonomous"
 import { TelemetryTool } from "./telemetry"
 import { BenchmarkTool } from "./benchmark"
 import { PluginTool } from "./plugin"
@@ -118,6 +119,7 @@ const layer = Layer.effect(
     const scheduletool = yield* ScheduleTool
     const gittool = yield* GitTool
     const securitytool = yield* SecurityTool
+    const autonomoustool = yield* AutonomousTaskTool
     const telemetrytool = yield* TelemetryTool
     const benchmarktool = yield* BenchmarkTool
     const plugintool = yield* PluginTool
@@ -240,6 +242,7 @@ const layer = Layer.effect(
           schedule: Tool.init(scheduletool),
           git: Tool.init(gittool),
           security: Tool.init(securitytool),
+          autonomous: Tool.init(autonomoustool),
           telemetry: Tool.init(telemetrytool),
           benchmark: Tool.init(benchmarktool),
           plugin: Tool.init(plugintool),
@@ -271,6 +274,7 @@ const layer = Layer.effect(
             tool.schedule,
             tool.git,
             tool.security,
+            tool.autonomous,
             tool.telemetry,
             tool.benchmark,
             tool.plugin,
@@ -339,6 +343,7 @@ const layer = Layer.effect(
           input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
         if (tool.id === ApplyPatchTool.id) return usePatch
         if (tool.id === EditTool.id || tool.id === WriteTool.id) return !usePatch
+        if (tool.id === AutonomousTaskTool.id) return input.agent.name === "autonomous"
 
         return true
       })

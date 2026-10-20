@@ -127,6 +127,7 @@
       "run.ts::--agent",
       "run.ts::--attach",
       "run.ts::--auto",
+      "run.ts::--autonomous",
       "run.ts::--command",
       "run.ts::--continue",
       "run.ts::--dangerously-skip-permissions",
@@ -264,6 +265,7 @@
     }
   },
   "agents": [
+    "autonomous",
     "build",
     "compaction",
     "explore",
@@ -275,6 +277,7 @@
   ],
   "tools": [
     "apply_patch",
+    "autonomous_task",
     "bash",
     "benchmark",
     "edit",

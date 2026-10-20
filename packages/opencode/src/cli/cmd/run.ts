@@ -171,6 +171,11 @@ export const RunCommand = effectCmd({
         type: "string",
         describe: "agent to use",
       })
+      .option("autonomous", {
+        type: "boolean",
+        describe: "run in controlled autonomous task mode (equivalent to --agent autonomous)",
+        default: false,
+      })
       .option("format", {
         type: "string",
         choices: ["default", "json"],
@@ -284,6 +289,11 @@ export const RunCommand = effectCmd({
 
         throw error
       }
+
+      if (args.autonomous && args.agent && args.agent !== "autonomous") {
+        die("--autonomous cannot be combined with --agent")
+      }
+      if (args.autonomous) args.agent = "autonomous"
 
       let message = [...args.message, ...(args["--"] || [])]
         .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))
@@ -600,6 +610,7 @@ export const RunCommand = effectCmd({
           agentSvc.get(name).pipe(Effect.provideService(InstanceRef, localInstance)),
         )
         if (!entry) {
+          if (args.autonomous) die('agent "autonomous" is not available in this project')
           UI.println(
             UI.Style.TEXT_WARNING_BOLD + "!",
             UI.Style.TEXT_NORMAL,
@@ -608,6 +619,7 @@ export const RunCommand = effectCmd({
           return undefined
         }
         if (entry.mode === "subagent") {
+          if (args.autonomous) die('agent "autonomous" is a subagent, not a primary agent')
           UI.println(
             UI.Style.TEXT_WARNING_BOLD + "!",
             UI.Style.TEXT_NORMAL,
@@ -628,6 +640,7 @@ export const RunCommand = effectCmd({
           .catch(() => undefined)
 
         if (!modes) {
+          if (args.autonomous) die(`failed to list agents from ${args.attach}`)
           UI.println(
             UI.Style.TEXT_WARNING_BOLD + "!",
             UI.Style.TEXT_NORMAL,
@@ -638,6 +651,7 @@ export const RunCommand = effectCmd({
 
         const agent = modes.find((a) => a.name === name)
         if (!agent) {
+          if (args.autonomous) die(`agent "autonomous" is not available on ${args.attach}`)
           UI.println(
             UI.Style.TEXT_WARNING_BOLD + "!",
             UI.Style.TEXT_NORMAL,
@@ -647,6 +661,7 @@ export const RunCommand = effectCmd({
         }
 
         if (agent.mode === "subagent") {
+          if (args.autonomous) die('agent "autonomous" is a subagent, not a primary agent')
           UI.println(
             UI.Style.TEXT_WARNING_BOLD + "!",
             UI.Style.TEXT_NORMAL,
@@ -973,6 +988,7 @@ type MiniCommandInput = {
   fork?: boolean
   model?: string
   agent?: string
+  autonomous?: boolean
   prompt?: string
   replay?: boolean
   replayLimit?: number
@@ -992,6 +1008,7 @@ export async function runMini(input: MiniCommandInput) {
     share: undefined,
     model: input.model,
     agent: input.agent,
+    autonomous: input.autonomous ?? false,
     format: "default",
     file: undefined,
     title: undefined,
