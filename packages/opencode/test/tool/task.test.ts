@@ -58,7 +58,7 @@ const layer = (flags: Partial<RuntimeFlags.Info> = {}) =>
 
 // Fase 9: mock Git.Service so branch detection + worktree lifecycle are
 // exercised deterministically (no real git binary / subprocess latency).
-const gitMock: Git.Interface = {
+const gitMock =  {
   repo: {
     discover: () => Effect.succeed({} as unknown as Git.Repository),
     clone: () => Effect.void,
@@ -68,13 +68,13 @@ const gitMock: Git.Interface = {
   history: {
     branch: () => Effect.succeed("main"),
     head: () => Effect.void,
-    defaultRemoteBranch: () => Effect.void,
+    defaultRemotebranch: () => Effect.succeed("main"),
     rootCommits: () => Effect.void,
   },
   sync: {
     fetchRemotes: () => Effect.void,
-    fetchBranch: () => Effect.void,
-    checkoutRemoteBranch: () => Effect.void,
+    fetchbranch: () => Effect.succeed("main"),
+    checkoutRemotebranch: () => Effect.succeed("main"),
     resetHard: () => Effect.void,
   },
   change: { capture: () => Effect.void, apply: () => Effect.void, discard: () => Effect.void },
@@ -86,7 +86,7 @@ const gitMock: Git.Interface = {
   index: { refresh: () => Effect.void, ignored: () => Effect.void },
   tree: { capture: () => Effect.void, write: () => Effect.void, files: () => Effect.void },
 }
-const gitMockLayer = Layer.succeed(Git.Service, gitMock)
+const gitMockLayer = Layer.succeed(Git.Service, gitMock as unknown as Git.Interface)
 
 const it = testEffect(Layer.mergeAll(layer(), gitMockLayer))
 const background = testEffect(Layer.mergeAll(layer({ experimentalBackgroundSubagents: true }), gitMockLayer))
