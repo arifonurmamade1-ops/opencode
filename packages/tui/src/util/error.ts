@@ -151,8 +151,8 @@ export function errorMessage(error: unknown): string {
   if (text && text !== "[object Object]") return text
 
   const formatted = errorFormat(error)
-  if (formatted) return formatted
-  return "unknown error"
+  if (formatted && formatted !== "Error (no message)") return formatted
+  return "No error message was provided by the failing component."
 }
 
 export function errorData(error: unknown) {

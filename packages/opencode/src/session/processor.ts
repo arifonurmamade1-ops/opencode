@@ -20,6 +20,7 @@ import { SessionStatus } from "./status"
 import { SessionSummary } from "./summary"
 import type { Provider } from "@/provider/provider"
 import { Question } from "@/question"
+import { ErrorReport } from "@/error/report"
 import { errorMessage } from "@/util/error"
 import { isRecord } from "@/util/record"
 import { EventV2Bridge } from "@/event-v2-bridge"
@@ -191,7 +192,12 @@ const layer = Layer.effect(
           state: {
             status: "error",
             input: match.part.state.input,
-            error: errorMessage(error),
+            error: ErrorReport.format(error, {
+              what: "Tool execution failed",
+              where: `tool ${match.part.tool}`,
+              attempted: `Execute tool "${match.part.tool}" with the provided arguments.`,
+              result: `Tool "${match.part.tool}" failed.`,
+            }),
             // Keep metadata streamed while running so failures retain progress detail (e.g. execute's child calls).
             metadata: match.part.state.metadata,
             time: { start: match.part.state.time.start, end: Date.now() },

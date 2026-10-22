@@ -4,6 +4,7 @@ import { useTheme } from "../context/theme"
 import { useTerminalDimensions } from "@opentui/solid"
 import { SplitBorder } from "./border"
 import { TextAttributes } from "@opentui/core"
+import { errorMessage } from "../util/error"
 export type ToastOptions = {
   title?: string
   message: string
@@ -67,14 +68,9 @@ function init() {
       }, toastOptions.duration).unref()
     },
     error: (err: any) => {
-      if (err instanceof Error)
-        return toast.show({
-          variant: "error",
-          message: err.message,
-        })
       toast.show({
         variant: "error",
-        message: "An unknown error has occurred",
+        message: errorMessage(err),
       })
     },
     get currentToast(): ToastOptions | null {

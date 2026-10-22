@@ -5,6 +5,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { UI } from "@/cli/ui"
 import { errorMessage } from "@opencode-ai/tui/util/error"
+import { ErrorReport } from "@/error/report"
 import { withTimeout } from "@/util/timeout"
 import { withNetworkOptions, resolveNetworkOptionsNoConfig, hasArg } from "@/cli/network"
 import { Filesystem } from "@/util/filesystem"
@@ -257,7 +258,15 @@ export const TuiThreadCommand = cmd({
           headers,
         })
       } catch (error) {
-        UI.error(errorMessage(error))
+        UI.error(
+          ErrorReport.format(error, {
+            detail: errorMessage(error),
+            where: "opencode tui",
+            attempted: "Validate the session before starting the TUI.",
+            result: "The TUI did not start.",
+            nextAction: "Check the URL, session ID, directory, and credentials, then retry.",
+          }),
+        )
         process.exitCode = 1
         return
       }

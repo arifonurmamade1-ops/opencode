@@ -3,6 +3,7 @@ import { Effect, Option, Schema } from "effect"
 import { Global } from "@opencode-ai/core/global"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { InstanceState } from "@/effect/instance-state"
+import { ErrorReport } from "@/error/report"
 import { Identifier } from "@/id/id"
 import * as Tool from "./tool"
 import { AutonomousTask } from "@/autonomous/task"
@@ -217,7 +218,13 @@ function success(task: AutonomousTask.Info, message: string) {
 function failure(output: string) {
   return {
     title: "Autonomous task",
-    output,
+    output: ErrorReport.format(new Error(output), {
+      what: "Invalid autonomous_task request",
+      where: "tool autonomous_task",
+      attempted: "Update the autonomous task state.",
+      result: "The request was rejected.",
+      nextAction: "Correct the arguments described in WHY and call autonomous_task again.",
+    }),
     metadata: {} as Metadata,
   }
 }

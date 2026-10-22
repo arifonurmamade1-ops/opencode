@@ -1108,7 +1108,11 @@ itProviderError.live("session.processor effect tests fail provider-executed erro
         const parts = yield* MessageV2.parts(msg.id)
         const call = parts.find((part): part is SessionV1.ToolPart => part.type === "tool")
         expect(call?.state.status).toBe("error")
-        if (call?.state.status === "error") expect(call.state.error).toBe("provider boom")
+        if (call?.state.status === "error") {
+          expect(call.state.error).toContain("provider boom")
+          expect(call.state.error).toContain("WHAT:")
+          expect(call.state.error).toContain("NEXT ACTION:")
+        }
         expect(seen).toContain(MessageV2.Event.PartUpdated.type)
         expect(seen).toContain(MessageV2.Event.Updated.type)
         expect(seen.filter((type) => type.startsWith("session.next."))).toEqual([])

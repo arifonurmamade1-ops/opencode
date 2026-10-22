@@ -40,7 +40,8 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
         success: "#7fd88f",
       }
 
-  const message = props.error.message || "An unknown error occurred."
+  const message =
+    props.error.message || "No error message was provided. Copy this report and include it when asking for help."
   const stack = props.error.stack || "No stack trace available."
   const issueURL = buildIssueURL(message, stack)
 

@@ -25,6 +25,7 @@
 //   event arrives, the queue entry is removed and the footer falls back
 //   to the next pending request or to the prompt view.
 import type { Event, Part, PermissionRequest, QuestionRequest, ToolPart } from "@opencode-ai/sdk/v2"
+import { ErrorReport } from "@/error/report"
 import * as Locale from "@/util/locale"
 import { toolView } from "./tool"
 import type { FooterOutput, FooterPatch, FooterView, StreamCommit } from "./types"
@@ -167,19 +168,14 @@ export function formatError(error: {
     message?: string
   }
 }): string {
-  if (error.data?.message) {
-    return error.data.message
-  }
-
-  if (error.message) {
-    return error.message
-  }
-
-  if (error.name) {
-    return error.name
-  }
-
-  return "unknown error"
+  const detail =
+    error.data?.message ?? error.message ?? (error.name === "UnknownError" ? undefined : error.name)
+  return ErrorReport.format(error, {
+    ...(detail ? { detail } : {}),
+    where: "session",
+    attempted: "Run the model request and stream the response.",
+    result: "The session reported an error.",
+  })
 }
 
 function isAbort(error: { name?: string } | undefined): boolean {
@@ -992,7 +988,9 @@ export function reduceSessionData(input: SessionDataInput): SessionDataOutput {
 
         data.ids.add(part.id)
         const text =
-          typeof part.state.error === "string" && part.state.error.trim() ? part.state.error : "unknown error"
+          typeof part.state.error === "string" && part.state.error.trim()
+            ? part.state.error
+            : "Tool error: no message was provided by the server. Re-run with `--print-logs` for diagnostics."
         commits.push(failTool(part, text))
         return out(data, commits, view)
       }

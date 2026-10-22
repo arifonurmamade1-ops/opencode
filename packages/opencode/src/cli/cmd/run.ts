@@ -23,7 +23,8 @@ import { effectCmd } from "../effect-cmd"
 import { EOL } from "os"
 import { Filesystem } from "@/util/filesystem"
 import { createOpencodeClient, type OpencodeClient, type ToolPart } from "@opencode-ai/sdk/v2"
-import { FormatError, FormatUnknownError } from "../error"
+import { FormatError } from "../error"
+import { ErrorReport } from "@/error/report"
 import { INTERACTIVE_INPUT_ERROR, resolveInteractiveStdin } from "./run/runtime.stdin"
 
 type ModelInput = Parameters<OpencodeClient["session"]["prompt"]>[0]["model"]
@@ -84,7 +85,23 @@ function block(info: Inline, output?: string) {
 }
 
 function formatRunError(error: unknown) {
-  return FormatError(error) ?? FormatUnknownError(error)
+  const formatted = FormatError(error)
+  return ErrorReport.format(error, {
+    ...(formatted === undefined || formatted === "" ? {} : { detail: formatted }),
+    where: "opencode run",
+    attempted: "Send the request to the session and wait for the response.",
+    result: "The request failed.",
+  })
+}
+
+function formatToolError(tool: string, error: string) {
+  if (error.trimStart().startsWith("WHAT:")) return error
+  return ErrorReport.format(error, {
+    what: "Tool execution failed",
+    where: `tool ${tool}`,
+    attempted: `Execute tool "${tool}" with the provided arguments.`,
+    result: `Tool "${tool}" failed.`,
+  })
 }
 
 async function tool(part: ToolPart) {
@@ -279,7 +296,14 @@ export const RunCommand = effectCmd({
       const auto = args.auto || args.yolo || args["dangerously-skip-permissions"]
       const thinking = interactive ? (args.thinking ?? true) : (args.thinking ?? false)
       const die = (message: string): never => {
-        UI.error(message)
+        UI.error(
+          ErrorReport.format(new Error(message), {
+            where: "opencode run",
+            attempted: "Run the requested command.",
+            result: "The command stopped before completing.",
+            nextAction: "Correct the issue described in WHY and retry.",
+          }),
+        )
         process.exit(1)
       }
       const dieInteractive = (error: unknown): never => {
@@ -349,8 +373,7 @@ export const RunCommand = effectCmd({
           process.chdir(path.isAbsolute(args.dir) ? args.dir : path.join(root, args.dir))
           return process.cwd()
         } catch {
-          UI.error("Failed to change directory to " + args.dir)
-          process.exit(1)
+          return die("Failed to change directory to " + args.dir)
         }
       })()
       const attachHeaders = args.attach
@@ -371,15 +394,13 @@ export const RunCommand = effectCmd({
         for (const filePath of list) {
           const resolvedPath = path.resolve(args.attach ? root : (directory ?? root), filePath)
           if (!(await Filesystem.exists(resolvedPath))) {
-            UI.error(`File not found: ${filePath}`)
-            process.exit(1)
+            die(`File not found: ${filePath}`)
           }
 
           const stat = Filesystem.stat(resolvedPath)
           const isDirectory = stat?.isDirectory() ?? false
           if (args.attach && isDirectory) {
-            UI.error(`Cannot attach local directory without a shared filesystem: ${filePath}`)
-            process.exit(1)
+            die(`Cannot attach local directory without a shared filesystem: ${filePath}`)
           }
 
           const content = await (async () => {
@@ -388,8 +409,7 @@ export const RunCommand = effectCmd({
             try {
               const opened = await handle.stat()
               if (!opened.isFile() || Number(opened.size) > ATTACH_FILE_MAX_BYTES) {
-                UI.error(`Cannot attach local file larger than 10 MiB or a special file: ${filePath}`)
-                process.exit(1)
+                die(`Cannot attach local file larger than 10 MiB or a special file: ${filePath}`)
               }
               if (opened.size === 0) return Buffer.alloc(0)
               const buffer = Buffer.alloc(Number(opened.size))
@@ -428,13 +448,11 @@ export const RunCommand = effectCmd({
       const initialInput = resolveRunInput(rawMessage, piped)
 
       if (message.trim().length === 0 && !args.command && !interactive) {
-        UI.error("You must provide a message or a command")
-        process.exit(1)
+        die("You must provide a message or a command")
       }
 
       if (args.fork && !args.continue && !args.session) {
-        UI.error("--fork requires --continue or --session")
-        process.exit(1)
+        die("--fork requires --continue or --session")
       }
 
       const rules: PermissionV1.Ruleset = interactive
@@ -472,8 +490,7 @@ export const RunCommand = effectCmd({
             .catch(() => undefined)
 
           if (!current?.data) {
-            UI.error("Session not found")
-            process.exit(1)
+            return die("Session not found")
           }
 
           if (args.fork) {
@@ -598,8 +615,7 @@ export const RunCommand = effectCmd({
           return next
         }
 
-        UI.error("Failed to resolve remote directory")
-        process.exit(1)
+        return die("Failed to resolve remote directory")
       }
 
       async function localAgent() {
@@ -685,8 +701,7 @@ export const RunCommand = effectCmd({
       async function execute(sdk: OpencodeClient) {
         const sess = await session(sdk)
         if (!sess?.id) {
-          UI.error("Session not found")
-          process.exit(1)
+          return die("Session not found")
         }
         const sessionID = sess.id
 
@@ -743,7 +758,7 @@ export const RunCommand = effectCmd({
                   continue
                 }
                 await toolError(part)
-                UI.error(part.state.error)
+                UI.error(formatToolError(part.tool, part.state.error))
               }
 
               if (
@@ -796,13 +811,20 @@ export const RunCommand = effectCmd({
             if (event.type === "session.error") {
               const props = event.properties
               if (props.sessionID !== sessionID || !props.error) continue
-              let err = String(props.error.name)
+              let err = String(props.error.name ?? "Unknown session error")
               if ("data" in props.error && props.error.data && "message" in props.error.data) {
                 err = String(props.error.data.message)
               }
               error = error ? error + EOL + err : err
               if (emit("error", { error: props.error })) continue
-              UI.error(err)
+              UI.error(
+                ErrorReport.format(props.error, {
+                  detail: err,
+                  where: `session ${sessionID}`,
+                  attempted: "Run the model request and stream the response.",
+                  result: "The session ended with an error.",
+                }),
+              )
             }
 
             if (

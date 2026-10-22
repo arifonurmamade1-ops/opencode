@@ -31,6 +31,7 @@ import { ConfigMarkdown } from "@/config/markdown"
 import { SessionSummary } from "./summary"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { SessionProcessor } from "./processor"
+import { ErrorReport } from "@/error/report"
 import { Tool } from "@/tool/tool"
 import { Permission } from "@/permission"
 import { SessionStatus } from "./status"
@@ -416,7 +417,12 @@ const layer = Layer.effect(
           ...part,
           state: {
             status: "error",
-            error: error ? `Tool execution failed: ${error.message}` : "Tool execution failed",
+            error: ErrorReport.format(error ?? new Error("The task tool failed without an error message."), {
+              what: "Task execution failed",
+              where: `tool ${TaskTool.id}`,
+              attempted: "Run the delegated task and wait for its result.",
+              result: "Tool execution failed.",
+            }),
             time: {
               start: part.state.status === "running" ? part.state.time.start : Date.now(),
               end: Date.now(),

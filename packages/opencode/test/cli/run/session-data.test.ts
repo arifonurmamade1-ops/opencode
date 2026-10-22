@@ -583,11 +583,12 @@ describe("run session data", () => {
       },
     })
 
-    expect(out.commits).toEqual([
-      expect.objectContaining({
-        kind: "error",
-        text: "permission denied",
-      }),
-    ])
+    expect(out.commits).toHaveLength(1)
+    const commit = out.commits[0]
+    expect(commit.kind).toBe("error")
+    if (commit.kind !== "error") return
+    expect(commit.text).toContain("permission denied")
+    expect(commit.text).toContain("WHAT:")
+    expect(commit.text).toContain("NEXT ACTION:")
   })
 })

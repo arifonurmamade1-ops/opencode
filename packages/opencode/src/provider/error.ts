@@ -38,7 +38,7 @@ function message(providerID: ProviderV2.ID, e: APICallError) {
         const err = STATUS_CODES[e.statusCode]
         if (err) return err
       }
-      return "Unknown error"
+      return "Provider returned an error without details. Check the provider status and run `opencode auth list`."
     }
 
     if (!e.responseBody || (e.statusCode && msg !== STATUS_CODES[e.statusCode])) {

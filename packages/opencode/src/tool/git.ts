@@ -338,4 +338,5 @@ export const GitTool = Tool.define<typeof Parameters, Metadata, Git.Service | FS
 )
 
 const stderr = (result: { stderr: Buffer }) =>
-  result.stderr.toString("utf8").trim().split(/\r?\n/).slice(0, 4).join("\n") || "unknown error"
+  result.stderr.toString("utf8").trim().split(/\r?\n/).slice(0, 4).join("\n") ||
+  "git exited with an error but produced no stderr output."

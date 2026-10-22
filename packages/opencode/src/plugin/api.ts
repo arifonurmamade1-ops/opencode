@@ -173,8 +173,8 @@ export function format(records: readonly PluginRecord[]): string {
 
 function line(record: PluginRecord) {
   const head = `- ${record.id} (${record.source}, api v${record.api})`
-  if (record.status === "skipped") return `${head} [skipped] ${record.error ?? "unknown reason"}`
-  if (record.status === "failed") return `${head} [failed] ${record.error ?? "unknown error"}`
+  if (record.status === "skipped") return `${head} [skipped] ${record.error ?? "no reason was reported"}`
+  if (record.status === "failed") return `${head} [failed] ${record.error ?? "no error details were reported"}`
   const parts: string[] = []
   if (record.tools.length) parts.push(`tools: ${record.tools.join(", ")}`)
   if (record.hooks.length) parts.push(`hooks: ${record.hooks.join(", ")}`)

@@ -1,6 +1,7 @@
 import { cmd } from "./cmd"
 import { UI } from "@/cli/ui"
 import { errorMessage } from "@opencode-ai/tui/util/error"
+import { ErrorReport } from "@/error/report"
 import { validateSession } from "../tui/validate-session"
 import { ServerAuth } from "@/server/auth"
 
@@ -122,7 +123,15 @@ export const AttachCommand = cmd({
         headers,
       })
     } catch (error) {
-      UI.error(errorMessage(error))
+      UI.error(
+        ErrorReport.format(error, {
+          detail: errorMessage(error),
+          where: "opencode attach",
+          attempted: "Validate the session on the remote server.",
+          result: "The attach request was rejected.",
+          nextAction: "Check the URL, session ID, directory, and credentials, then retry.",
+        }),
+      )
       process.exitCode = 1
       return
     }

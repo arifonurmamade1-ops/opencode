@@ -26,11 +26,16 @@ import { WebCommand } from "./cmd/web"
 import { PrCommand } from "./cmd/pr"
 import { SessionCommand } from "./cmd/session"
 import { DbCommand } from "./cmd/db"
-import { errorMessage } from "@/util/error"
+import { ErrorReport } from "@/error/report"
 import { PluginCommand } from "./cmd/plug"
 import { Heap } from "./heap"
 
 const args = hideBin(process.argv)
+
+function commandLabel(input: string[]) {
+  const command = input.find((arg) => !arg.startsWith("-"))
+  return command ? `opencode ${command}` : "opencode"
+}
 
 function show(out: string) {
   const text = out.trimStart()
@@ -102,15 +107,26 @@ const cli = yargs(args)
   .command(PluginCommand)
   .command(DbCommand)
   .fail((msg, err) => {
+    if (err) throw err
+    if (!msg) {
+      process.exit(1)
+    }
+    UI.error(
+      ErrorReport.format(new Error(msg), {
+        what: "Invalid command line arguments",
+        where: commandLabel(args),
+        attempted: "Parse the command line arguments.",
+        result: "The command was not started.",
+        nextAction: "Correct the argument or option named in WHY, then retry.",
+      }),
+    )
     if (
-      msg?.startsWith("Unknown argument") ||
-      msg?.startsWith("Not enough non-option arguments") ||
-      msg?.startsWith("Invalid values:")
+      msg.startsWith("Unknown argument") ||
+      msg.startsWith("Not enough non-option arguments") ||
+      msg.startsWith("Invalid values:")
     ) {
-      if (err) throw err
       cli.showHelp(show)
     }
-    if (err) throw err
     process.exit(1)
   })
   .strict()
@@ -127,10 +143,15 @@ try {
   }
 } catch (e) {
   const formatted = FormatError(e)
-  if (formatted) UI.error(formatted)
-  if (formatted === undefined) {
-    UI.error("Unexpected error" + EOL)
-    process.stderr.write(errorMessage(e) + EOL)
+  if (formatted !== "") {
+    UI.error(
+      ErrorReport.format(e, {
+        ...(formatted === undefined ? {} : { detail: formatted }),
+        where: commandLabel(args),
+        attempted: "Execute the requested CLI command.",
+        result: "The command failed.",
+      }),
+    )
   }
   process.exitCode = 1
 } finally {

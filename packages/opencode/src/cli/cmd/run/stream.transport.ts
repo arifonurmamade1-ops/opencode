@@ -267,7 +267,7 @@ export function formatUnknownError(error: unknown): string {
     }
   }
 
-  return "unknown error"
+  return "Unknown error: the failing component provided no message. Re-run with `--print-logs` for diagnostics."
 }
 
 function sameView(a: FooterView, b: FooterView) {

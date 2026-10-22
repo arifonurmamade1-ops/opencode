@@ -353,7 +353,10 @@ const layer = Layer.effect(
 
       return {
         client: undefined as MCPClient | undefined,
-        status: (lastStatus ?? { status: "failed", error: "Unknown error" }) as Status,
+        status: (lastStatus ?? {
+          status: "failed",
+          error: "MCP server reported a failure without error details.",
+        }) as Status,
       }
     })
 
@@ -372,7 +375,7 @@ const layer = Layer.effect(
       const policy = McpPolicy.retryPolicy(mcp.retry)
       let result: { client?: MCPClient; status: Status } = {
         client: undefined,
-        status: { status: "failed", error: "Unknown error" },
+        status: { status: "failed", error: "MCP server reported a failure without error details." },
       }
       for (let attempt = 1; ; attempt++) {
         result = yield* attemptRemote(key, mcp, url)
