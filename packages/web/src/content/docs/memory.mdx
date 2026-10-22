@@ -1,0 +1,78 @@
+---
+title: Memory
+description: Persist durable project knowledge across sessions.
+---
+
+Project memory is a small, durable store for facts the agent should remember across sessions: architecture notes, conventions, decisions, known bugs, useful commands, and configuration details.
+
+Memory is stored locally in the project's OpenCode database. It is not a general chat history and it is not a background recorder; entries exist because you or the agent saved them.
+
+---
+
+## Use memory
+
+Run `/memory` to show the current project memory. You can also give it an instruction.
+
+```text frame="none"
+/memory
+```
+
+```text frame="none"
+/memory remember that this project uses Bun for tests and never uses npm
+```
+
+```text frame="none"
+/memory remove the entry about the old deployment command
+```
+
+The agent uses the `memory` tool to save, list, and remove entries.
+
+| Action   | What it does                                                                 |
+| -------- | ---------------------------------------------------------------------------- |
+| `save`   | Save an entry. Saving the same key in the same scope and subject updates it in place. |
+| `list`   | List entries, optionally filtered by scope.                                 |
+| `remove` | Remove an entry by id.                                                       |
+
+---
+
+## Scopes and kinds
+
+Memory entries are grouped by scope and kind.
+
+| Scope     | Subject                                                              |
+| --------- | -------------------------------------------------------------------- |
+| `project` | Shared by every session in the project. This is the default.         |
+| `agent`   | Anchored to the current agent.                                      |
+| `task`    | Anchored to an explicit task id.                                    |
+| `session` | Anchored to the current session.                                    |
+
+The available kinds are `architecture`, `decision`, `rule`, `convention`, `bug`, `command`, `config`, `user_decision`, and `result`.
+
+Use a stable, short key so later saves update the same entry instead of creating duplicates.
+
+```text frame="none"
+/memory save a convention: API handlers must return typed errors
+```
+
+---
+
+## How memory reaches the model
+
+Project memory is included in the project context for new sessions. OpenCode loads at most 40 entries and caps the rendered memory at roughly 500 tokens. When the list is too long, the model sees how many entries were trimmed, and the full list remains available through the `memory` tool.
+
+Memory is plain text. It is not searched semantically and does not use embeddings. Keep entries concise and specific so they remain useful.
+
+:::caution
+Memory entries are stored locally, but they are included in the context sent to your model provider. Do not save secrets or other data you would not send to that provider.
+:::
+
+---
+
+## Privacy and cleanup
+
+- Memory lives in the local project database and is not transmitted anywhere by OpenCode.
+- Entries can be removed by id with the `memory` tool.
+- Memory is project-scoped; deleting project data removes its memory too.
+- There is no separate memory dashboard. Manage entries through `/memory` or the `memory` tool.
+
+See [Tools](/docs/tools) for the full built-in tool list and [Configuration](/docs/config) for project and global config locations.

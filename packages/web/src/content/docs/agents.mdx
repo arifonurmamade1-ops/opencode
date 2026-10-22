@@ -27,8 +27,8 @@ Primary agents are the main assistants you interact with directly. You can cycle
 You can use the **Tab** key to switch between primary agents during a session.
 :::
 
-OpenCode comes with two built-in primary agents, **Build** and **Plan**. We'll
-look at these below.
+OpenCode comes with three built-in primary agents, **Build**, **Plan**, and
+**Autonomous**. We'll look at these below.
 
 ---
 
@@ -36,13 +36,13 @@ look at these below.
 
 Subagents are specialized assistants that primary agents can invoke for specific tasks. You can also manually invoke them by **@ mentioning** them in your messages.
 
-OpenCode comes with three built-in subagents, **General**, **Explore**, and **Scout**. We'll look at this below.
+OpenCode comes with three built-in subagents, **General**, **Explore**, and **Security**. We'll look at this below.
 
 ---
 
 ## Built-in
 
-OpenCode comes with two built-in primary agents and three built-in subagents.
+OpenCode comes with three built-in primary agents and three built-in subagents, plus hidden system agents for compaction, titles, and summaries.
 
 ---
 
@@ -68,6 +68,16 @@ This agent is useful when you want the LLM to analyze code, suggest changes, or 
 
 ---
 
+### Use autonomous
+
+_Mode_: `primary`
+
+A controlled end-to-end agent for tasks that need a complete delivery record. It works through a fixed evidence checklist, verifies the result, and writes a Markdown artifact under `.opencode/autonomous/`.
+
+It disables the `question` tool and plan enter/exit commands, so it must report a blocker instead of waiting for clarification. It does not bypass permissions or commit without being asked. See [Autonomous mode](#autonomous-mode).
+
+---
+
 ### Use general
 
 _Mode_: `subagent`
@@ -84,11 +94,13 @@ A fast, read-only agent for exploring codebases. Cannot modify files. Use this w
 
 ---
 
-### Use scout
+### Use security
 
 _Mode_: `subagent`
 
-A read-only agent for external docs and dependency research. Use this when you need to clone a dependency repository into OpenCode's managed cache, inspect library source, or cross-reference local code against upstream implementations without modifying your workspace.
+A security audit specialist for secrets, vulnerable dependencies, injection, XSS, SSRF, RCE, path traversal, authentication and permission flaws, and data exposure. It runs the `security` scanner and writes `SECURITY_REPORT.md`.
+
+It cannot edit application code by default. The only write permission it has is for `SECURITY_REPORT*.md`. See [Security](/docs/security).
 
 ---
 
@@ -113,6 +125,51 @@ Hidden system agent that generates short session titles. It runs automatically a
 _Mode_: `primary`
 
 Hidden system agent that creates session summaries. It runs automatically and is not selectable in the UI.
+
+---
+
+## Autonomous mode
+
+The **Autonomous** agent owns a request from start to finish and records evidence for each stage. It is intended for work where you want proof of what ran and what was verified, not for background or unattended execution.
+
+Every autonomous task has measurable acceptance criteria. The agent records these stages in order:
+
+| Stage        | Required | Purpose                                                        |
+| ------------ | -------- | -------------------------------------------------------------- |
+| `understand` | Yes      | Restate the request, constraints, and acceptance criteria.     |
+| `research`   | No       | Inspect the codebase, docs, and existing patterns.             |
+| `plan`       | Yes      | Name the files, approach, verification, and risks.             |
+| `agents`     | No       | Select subagents and explain their assignments.                |
+| `implement`  | Yes      | Make the smallest complete change.                             |
+| `run`        | No       | Run the application or relevant entrypoint.                    |
+| `test`       | Yes      | Run the most specific tests, then broader tests.               |
+| `browser`    | No       | Verify a user-facing change with an available browser tool.    |
+| `fix`        | No       | Fix issues found by running, testing, or browser checks.       |
+| `security`   | Yes      | Scan the changed area and run the project's dependency audit.  |
+| `diff`       | Yes      | Review the final diff for scope creep and accidental changes.  |
+| `artifact`   | Yes      | Run the delivery gate and write the artifact.                  |
+
+Optional stages can be skipped only with a concrete reason. A stage is not complete without evidence such as a command and result, a file path, a URL, or a finding. Delivery itself is the final response, not a separately recorded stage.
+
+### Delivery artifact
+
+When all required gates pass, the `autonomous_task` tool writes:
+
+```text
+.opencode/autonomous/<task-id>.md
+```
+
+The artifact contains the objective, acceptance criteria, stage evidence, verification results, security outcome, remaining limitations, and the final diff review. It is a delivery record, not a commit or pull request.
+
+If the task cannot continue, the agent records the blocker and writes an artifact marked as blocked. It reports `BLOCKED` with what failed, why, and what is needed. It does not claim delivery.
+
+### Limits
+
+- The agent still follows normal permissions and tool approvals.
+- It cannot ask questions, so ambiguous work should be clarified before switching to autonomous mode.
+- It does not commit, push, or open a pull request unless you ask.
+- The checklist proves that evidence was recorded; it does not replace reviewing the actual changes.
+- There is no artifact viewer, artifact dashboard, or general artifact store. The Markdown file on disk is the artifact.
 
 ---
 
@@ -554,6 +611,28 @@ Since the last matching rule takes precedence, put the `*` wildcard first and sp
 ```
 
 [Learn more about permissions](/docs/permissions).
+
+---
+
+### MCP servers
+
+Use the `mcp` option to allow or hide individual MCP servers for an agent. Disabled servers have their tools hidden from the agent; enabled servers have their tools granted to it.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "review": {
+      "mcp": {
+        "github": true,
+        "playwright": false
+      }
+    }
+  }
+}
+```
+
+Server names are the keys under `mcp` in your config. See [MCP servers](/docs/mcp-servers) for server setup and access policy.
 
 ---
 

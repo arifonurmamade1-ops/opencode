@@ -1,0 +1,113 @@
+---
+title: Security
+description: Understand the controls OpenCode provides and the limits of its security tooling.
+---
+
+OpenCode runs commands, edits files, and can connect to remote services, so security depends on both its configuration and the permissions you grant. This page describes the controls that exist in the current build and the limits you should account for.
+
+---
+
+## Permissions and policies
+
+The first line of defense is the permission system. Tools can be `allow`, `ask`, or `deny`, including per-agent and wildcard rules.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": "ask",
+    "bash": "ask",
+    "webfetch": "allow"
+  }
+}
+```
+
+- [Permissions](/docs/permissions) covers tool rules, agent overrides, and approval behavior.
+- [Policies](/docs/policies) covers managed organization policies that take precedence over user configuration.
+
+Permissions reduce accidental actions, but they are not an operating-system sandbox. A permitted shell command runs with the same access as the OpenCode process.
+
+---
+
+## Server access
+
+`opencode serve` and `opencode web` can expose a server that controls shell and file access. The server refuses to bind a non-loopback hostname unless `OPENCODE_SERVER_PASSWORD` is set.
+
+```bash
+OPENCODE_SERVER_PASSWORD=secret opencode web --hostname 0.0.0.0
+```
+
+- Authentication is HTTP basic auth. The username defaults to `opencode` and can be changed with `OPENCODE_SERVER_USERNAME`.
+- When the server prints network addresses, those URLs include an `auth_token` for convenience. Treat those URLs as credentials.
+- Put the server behind a TLS-terminating reverse proxy before exposing it outside a trusted network. OpenCode does not provide TLS itself.
+- Remote clients attach with `opencode attach` or connect through the desktop server picker. See [Remote access](/docs/remote).
+
+Never expose an unauthenticated OpenCode server to a public network. It provides shell access by design.
+
+---
+
+## MCP access policy
+
+MCP servers add external tools, so each server can carry its own policy. Servers are configured under `mcp` in `opencode.json`.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "example": {
+      "type": "local",
+      "command": ["my-mcp-server"],
+      "permission": {
+        "*": "ask",
+        "read_file": "allow"
+      },
+      "trusted": false,
+      "sandbox": true,
+      "retry": { "attempts": 3, "delay": 250 },
+      "rateLimit": { "requests": 60, "window": 60000 }
+    }
+  }
+}
+```
+
+- `permission` sets default rules for the server's tools. Agent and session rules override them.
+- `trusted: true` skips permission prompts for the server, but explicit `deny` rules still apply.
+- `sandbox: true` for local servers reduces inherited environment variables and confines the server's working directory to the workspace. It is not an OS-level container or filesystem jail.
+- `retry` retries transport failures only. Tool-level errors and rate limits are final.
+- `rateLimit` fails calls over the limit immediately.
+
+See [MCP servers](/docs/mcp-servers) for the full transport and policy options.
+
+---
+
+## Security audit
+
+OpenCode includes a static security scanner and a dedicated `security` subagent.
+
+```text frame="none"
+@security audit the authentication and file upload code
+```
+
+The subagent runs the `security` tool and writes `SECURITY_REPORT.md` in the project root. It checks for:
+
+- hardcoded secrets and credentials
+- vulnerable dependencies and unpinned versions
+- unsafe or deprecated APIs
+- injection, XSS, SSRF, RCE, and path traversal
+- authentication, permission, and data-exposure problems
+
+The scanner is deterministic static analysis, not an exploit engine. It skips build and vendor directories, ignores files over 512 KiB, masks detected secret values, and reports candidates for verification. Dependency version auditing is separate; run `bun audit` or `npm audit` as well.
+
+The security subagent is read-only except for `SECURITY_REPORT*.md`. It does not modify application code, configuration, dependencies, or lockfiles. It only applies a fix if you explicitly unlock edit permissions and ask for that exact fix, and must record the change in the report.
+
+---
+
+## Honest limitations
+
+- There is no general-purpose sandbox for tools or shell commands. Worktrees isolate changes, not processes.
+- Browser automation is not implemented. OpenCode can embed a browser panel for viewing, but it does not drive the browser or run browser-based attacks.
+- The security scanner uses heuristics and pattern matching. Verify findings in context and do not treat a clean scan as proof that the project is secure.
+- The scanner does not query a CVE database. Use your package manager's audit command for dependency vulnerabilities.
+- OpenCode does not attempt exploits, brute force, or destructive security testing.
+
+For machine-readable diagnostics, run `opencode doctor` or `/doctor`. See [CLI](/docs/cli#doctor) and [TUI](/docs/tui#doctor).

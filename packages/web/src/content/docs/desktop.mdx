@@ -1,0 +1,97 @@
+---
+title: Desktop
+description: Use OpenCode Desktop, including the agent dashboard, browser panel, and inline editing.
+---
+
+OpenCode Desktop is the Electron app for macOS, Windows, and Linux. It runs the same OpenCode server and session engine as the CLI, with a native window and desktop integrations.
+
+Desktop is currently in beta.
+
+---
+
+## Install
+
+Download the latest desktop build from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+
+| Platform            | File                               |
+| ------------------- | ---------------------------------- |
+| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg` |
+| macOS (Intel)       | `opencode-desktop-mac-x64.dmg`     |
+| Windows             | `opencode-desktop-windows-x64.exe` |
+| Linux               | `.deb`, `.rpm`, or `.AppImage`      |
+
+Homebrew users can install the cask with `brew install --cask opencode-desktop`, and Scoop users can install `extras/opencode-desktop`.
+
+---
+
+## Local or remote server
+
+By default, Desktop starts a local OpenCode server (the `opencode-cli` sidecar) in the background. Sessions, files, and tools run on that local server.
+
+You can also connect Desktop to a server running elsewhere, for example a workstation on your network:
+
+1. Open the server picker from the server name and status indicator.
+2. Enter the server URL.
+3. Authenticate with the server password if it requires one.
+
+The default server can be cleared from the same picker. See [Remote access](/docs/remote) for server setup and authentication, and [Troubleshooting](/docs/troubleshooting#fix-server-connection-issues) if the app cannot connect.
+
+On Windows, Desktop can use a local server or a server running in WSL.
+
+---
+
+## Agent dashboard
+
+Open the command palette and run **Open dashboard** to see what is happening across projects.
+
+The dashboard shows:
+
+- sessions ordered with pending approvals first
+- `Working`, `Retrying`, or `Idle` state
+- the model, token count, and cost when available
+- pending permission and question counts
+- a **Stop task** control for sessions with active work
+- counts for projects, sessions, models, and providers
+
+Select a session to open it and answer any pending request. Panels that do not have a backing feature are labeled **Not available**; the dashboard does not invent data for them.
+
+---
+
+## Inline editing
+
+Select code in a file and open the command palette to run an inline edit command:
+
+- **Explain** the active file or selection
+- **Fix** a problem
+- **Refactor** without changing behavior
+- **Add tests**
+- **Add documentation**
+- **Generate** code using the file or selection as reference
+
+The command sends the corresponding built-in slash command together with the active file and selected line range as context.
+
+---
+
+## Browser panel
+
+The session view includes an embedded browser panel for documentation, local development servers, and external links. The agent cannot control it. See [Browser](/docs/browser) for controls, embedding limits, and what the panel does not do.
+
+---
+
+## Other desktop behavior
+
+- Desktop shows system notifications when a response finishes or a session needs attention, subject to your operating system's notification settings.
+- Browser and terminal panels share the session context, so you can move between editing, running commands, and viewing a page.
+- File attachments, voice input, and other app features follow the model's capabilities and your platform support.
+
+---
+
+## Troubleshooting
+
+If the app fails to start, cannot connect to a server, or shows a blank window:
+
+- Run `opencode doctor` from a terminal for a static diagnosis.
+- Check [Troubleshooting](/docs/troubleshooting) for server connection, plugin, cache, and WebView2 guidance.
+- On macOS, use **OpenCode → Reload Webview** if the interface is blank or frozen.
+
+See [CLI](/docs/cli#doctor) for the doctor options.

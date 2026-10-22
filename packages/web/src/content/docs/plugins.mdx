@@ -123,6 +123,38 @@ The plugin function receives:
 
 ---
 
+### Plugin API version
+
+This build implements plugin API version `1`. New plugins should use a default export that declares the API version:
+
+```ts title=".opencode/plugins/my-plugin.ts"
+import type { Plugin } from "@opencode-ai/plugin"
+
+const MyPlugin: Plugin = async ({ project, client, $, directory, worktree }) => {
+  return {
+    // Hook implementations go here
+  }
+}
+
+export default {
+  id: "my-plugin",
+  api: 1,
+  server: MyPlugin,
+}
+```
+
+- `id` is a stable plugin identity. It is required for path plugins.
+- `api` is optional and defaults to the running build's version.
+- `server` is the plugin function that returns the hooks object.
+
+The plugin API contract is additive: existing hooks keep their meaning when new hooks or capabilities are added. A plugin that declares an API newer than the running build is skipped with an explicit reason instead of being partially loaded. A plugin whose hooks do not match the API is reported as failed and is not registered.
+
+Older modules that export one or more named plugin functions still load through the compatibility path. New plugins should prefer the default export above.
+
+Use the `plugin` tool to inspect loaded, skipped, and failed plugins, their API version, capabilities, hooks, and contributed tools. See [Tools](/docs/tools#plugin).
+
+---
+
 ### TypeScript support
 
 For TypeScript plugins, you can import types from the plugin package:

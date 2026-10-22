@@ -107,6 +107,20 @@ Toggle tool execution details.
 
 ---
 
+### doctor
+
+Diagnose the connected server and project without leaving the TUI.
+
+```bash frame="none"
+/doctor
+```
+
+The dialog checks configuration, providers, models, APIs, MCP, browser availability, LSP, Git, permissions, sandboxing, storage, and dependencies. It uses the live state of the server the TUI is attached to, so some checks are marked as skipped while session data is still loading. Press `Enter` to copy the report.
+
+Checks that only make sense on the CLI are reported as skips with the command to run. For the static, offline report, run `opencode doctor` in a terminal. See [CLI](/docs/cli#doctor).
+
+---
+
 ### editor
 
 Open external editor for composing messages. Uses the editor set in your `EDITOR` environment variable. [Learn more](#editor-setup).
@@ -163,6 +177,18 @@ Guided setup for creating or updating `AGENTS.md`. [Learn more](/docs/rules).
 
 ---
 
+### memory
+
+Show and manage the persistent project memory.
+
+```bash frame="none"
+/memory
+```
+
+You can also give it an instruction, for example `/memory remember that tests run with Bun`, or ask it to remove an entry. Project memory is injected into new sessions and survives across sessions. See [Memory](/docs/memory).
+
+---
+
 ### models
 
 List available models.
@@ -203,6 +229,18 @@ be a Git repository**.
 ```
 
 **Keybind:** `ctrl+x r`
+
+---
+
+### schedule
+
+Create and manage tasks that run now, at a time, on a recurring cadence, or when a condition is met.
+
+```bash frame="none"
+/schedule run the tests every weekday at 18:00
+```
+
+If the request does not say when or under which condition the task should run, OpenCode asks before creating it. Tasks run only while the project is open. See [Scheduler](/docs/scheduler).
 
 ---
 

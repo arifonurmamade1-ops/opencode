@@ -84,6 +84,23 @@ Both options take an array of model IDs — the same IDs shown in the `/models` 
 
 ---
 
+## Retries
+
+When a provider request fails for a transient reason, OpenCode retries the same model automatically. Transient causes include rate limits (`429`), server errors (`5xx`), overloaded providers, and network or timeout failures.
+
+The retry policy is fixed:
+
+- Up to 5 retries after the initial request.
+- Exponential backoff starting at 2 seconds, doubling each time, with up to 25% jitter.
+- `Retry-After` and `Retry-After-Ms` response headers are respected when the provider sends them.
+- Context-overflow errors and non-transient provider errors are not retried.
+
+The retry status is shown in the TUI with the attempt number and the next retry time. You can stop the session to cancel the remaining retries.
+
+OpenCode does not switch to a different model or provider as a fallback. The retry count and backoff are not configurable. If a provider is consistently unreliable, choose a different model or configure a provider-specific endpoint instead.
+
+---
+
 ## OpenCode Zen
 
 OpenCode Zen is a list of models provided by the OpenCode team that have been

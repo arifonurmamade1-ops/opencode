@@ -1,0 +1,74 @@
+---
+title: Remote access
+description: Run the agent on one machine and control it from another client.
+---
+
+OpenCode uses a client/server architecture. `opencode serve` and `opencode web` run a server that owns the project, sessions, and agent execution. A TUI, the web interface, or the desktop app can connect to that server and control the work while the agent keeps running on the server machine.
+
+This is remote control, not remote shell access: clients use the OpenCode API and remain subject to OpenCode's permissions and approvals.
+
+---
+
+## Start a server
+
+Start a headless server on the machine that has the project and the tools:
+
+```bash
+OPENCODE_SERVER_PASSWORD=secret opencode serve --hostname 0.0.0.0 --port 4096
+```
+
+Or start the web interface on the server:
+
+```bash
+OPENCODE_SERVER_PASSWORD=secret opencode web --hostname 0.0.0.0 --port 4096
+```
+
+A non-loopback bind requires `OPENCODE_SERVER_PASSWORD`. OpenCode refuses to start otherwise.
+
+The server prints local and network addresses. When authentication is enabled, network URLs include an `auth_token` so a browser can open them directly. Treat those URLs as credentials.
+
+For configuration details, see [Server](/docs/server) and [Web](/docs/web).
+
+---
+
+## Connect a client
+
+### Terminal
+
+Attach a TUI to the remote server:
+
+```bash
+opencode attach http://10.20.30.40:4096 --password secret
+```
+
+`--username` overrides the default `opencode` username. The password and username can also come from `OPENCODE_SERVER_PASSWORD` and `OPENCODE_SERVER_USERNAME`.
+
+### Browser
+
+Open the network URL printed by `opencode web`. The web interface shares the server's sessions and state, so changes made in one client appear in the others.
+
+### Desktop
+
+In OpenCode Desktop, open the server picker, enter the server URL, and authenticate. Desktop can clear that default server and return to its local sidecar later.
+
+---
+
+## Security
+
+- Use a strong password and keep it out of shell history where possible.
+- Put the server behind a TLS-terminating reverse proxy before exposing it outside a trusted network. OpenCode's built-in authentication is HTTP basic auth and does not add TLS.
+- Restrict network access with a firewall or private network. The server exposes shell and file access by design.
+- Permissions and approval requests still apply to remote sessions. Review requests before approving them.
+- Do not expose an unauthenticated server. A non-loopback bind without a password is rejected.
+
+See [Security](/docs/security) for the full set of controls and limitations.
+
+---
+
+## Limits
+
+- The agent runs on the server. If the server stops, its running work stops.
+- A client needs network access to the server; there is no relay or cloud control plane.
+- There is no separate mobile app. A mobile browser can use the web interface if it can reach the server, but mobile-specific controls are not guaranteed.
+- Remote execution is not a sandbox. The server process has whatever access its operating system account has.
+- OpenCode does not provide TLS, user accounts, or role-based access control for the server. Use network and proxy controls for those requirements.

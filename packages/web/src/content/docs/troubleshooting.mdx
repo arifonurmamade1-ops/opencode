@@ -7,6 +7,48 @@ To debug issues with OpenCode, start by checking the logs and local data it stor
 
 ---
 
+## Run doctor first
+
+`opencode doctor` reports on the machine that runs the CLI:
+
+```bash
+opencode doctor
+```
+
+It checks configuration, providers, models, API endpoints, MCP, browser availability, LSP, Git, permissions, sandboxing, storage, and dependencies. The report is static and offline by default, so it can diagnose a broken configuration without starting a project. Add `--network` to probe configured provider endpoints, or `--json` for a machine-readable report.
+
+Inside the TUI, `/doctor` runs the same diagnosis against the live server the TUI is attached to.
+
+The command exits with code `1` when a check fails. Warnings and skips do not fail the exit code. See [CLI](/docs/cli#doctor) for flags and behavior.
+
+---
+
+## Error reports
+
+Failures from the CLI, TUI, sessions, and tools use a structured report instead of a generic message:
+
+```text
+WHAT: Unable to reach the remote service
+WHY: ConnectionRefused: Unable to connect to the provider
+WHERE: opencode run
+ATTEMPTED: Send the request to the session and wait for the response.
+RESULT: The request failed.
+NEXT ACTION: Check the remote URL, network, proxy, or VPN configuration, then retry.
+```
+
+| Field         | Meaning                                                          |
+| ------------- | ---------------------------------------------------------------- |
+| `WHAT`        | Short classification of the failure.                             |
+| `WHY`         | Underlying message, including a cause when available.            |
+| `WHERE`       | Command, session, tool, or subsystem that failed.                |
+| `ATTEMPTED`   | Action or actions that were tried.                               |
+| `RESULT`      | What happened after the attempt.                                 |
+| `NEXT ACTION` | Concrete recovery step.                                          |
+
+If the underlying error has no message, the report says so explicitly and points at diagnostics rather than showing a vague fallback. Include the full report when asking for help.
+
+---
+
 ## Logs
 
 Log files are written to:

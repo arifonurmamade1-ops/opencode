@@ -312,6 +312,63 @@ Each question includes a header, the question text, and a list of options. Users
 
 ---
 
+## Specialized tools
+
+These built-in tools support specific workflows. Most are used by the agent automatically; the pages linked below explain the user-facing behavior.
+
+### schedule
+
+Manage tasks that run immediately, at a time, on a recurring cadence, or when a condition is met. See [Scheduler](/docs/scheduler).
+
+### memory
+
+Save, list, and remove durable project memory. See [Memory](/docs/memory).
+
+### git
+
+Inspect and prepare Git work:
+
+- `summary` - summarize the working tree
+- `message` - propose a commit message
+- `branch` - recommend a branch name
+- `smart` - stage and commit all changes with a generated or supplied message
+- `conflicts` - explain merge conflicts
+- `merge` - preview a merge against a base branch
+- `regression` - flag risky changes
+- `pr` - prepare a pull request description
+
+`smart` commits locally but never pushes. `merge` and `pr` prepare guidance; they do not perform destructive remote operations.
+
+### security
+
+Run a static security scan over the project. Categories include secrets, dependencies, injection, XSS, SSRF, RCE, path traversal, authentication, permissions, and data exposure. The scanner is heuristic; see [Security](/docs/security).
+
+### plugin
+
+Inspect the plugins known to the project, their API version, status, capabilities, hooks, and contributed tools. See [Plugins](/docs/plugins#plugin-api-version).
+
+### hook
+
+Show the lifecycle hooks configured by the merged global and project configuration. See [Lifecycle hooks](/docs/config#lifecycle-hooks).
+
+### mcp
+
+Inspect MCP server status, access policy, tool counts, and call counters. See [MCP servers](/docs/mcp-servers).
+
+### telemetry
+
+Report local usage statistics such as tokens, cost, latency, tool calls, failures, retries, and task outcomes. Disabled until `telemetry.enabled` is set to `true`. See [Telemetry](/docs/config#telemetry).
+
+### benchmark
+
+Run the built-in benchmark suite, list cases and stored runs, show a run, or compare two runs. Benchmark runs execute real model calls and can take time; inspect `cases` before running the suite.
+
+### autonomous
+
+Track a controlled autonomous task through a fixed evidence checklist and write a delivery artifact. Only the `autonomous` primary agent can use this tool. See [Autonomous mode](/docs/agents#autonomous-mode).
+
+---
+
 ## Custom tools
 
 Custom tools let you define your own functions that the LLM can call. These are defined in your config file and can execute arbitrary code.

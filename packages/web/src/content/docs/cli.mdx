@@ -612,6 +612,29 @@ opencode debug [command]
 
 ---
 
+### doctor
+
+Diagnose configuration, providers, models, MCP servers, Git, permissions, storage, and dependencies.
+
+```bash
+opencode doctor
+```
+
+The command runs without loading a project instance or starting MCP/LSP servers, so it can report a broken configuration that would otherwise stop OpenCode at startup. It does not apply database migrations.
+
+| Flag        | Description                                                        |
+| ----------- | ------------------------------------------------------------------ |
+| `--json`    | Print a stable JSON report for scripts and CI                      |
+| `--network` | Probe configured provider endpoints for reachability               |
+
+By default the report is static and offline. `--network` opts into reachability probes; probes send no credentials, accept any HTTP response as reachable, and time out after five seconds. They test reachability, not authentication or model access.
+
+`opencode doctor` exits with code `1` when a check fails and `0` when checks only warn or are skipped. URLs in the report have userinfo and query strings redacted. The report also states when a capability is unavailable rather than pretending to test it.
+
+The TUI exposes the same diagnosis as `/doctor`, using the live state of the server it is attached to. See [TUI](/docs/tui#doctor) and [Troubleshooting](/docs/troubleshooting#run-doctor-first).
+
+---
+
 ### uninstall
 
 Uninstall OpenCode and remove all related files.
@@ -730,5 +753,4 @@ These environment variables enable experimental features that may change or be r
 | `OPENCODE_EXPERIMENTAL_EVENT_SYSTEM`            | boolean | Enable experimental event system        |
 | `OPENCODE_EXPERIMENTAL_NATIVE_LLM`              | boolean | Enable native LLM request path          |
 | `OPENCODE_EXPERIMENTAL_PARALLEL`                | boolean | Enable parallel web search execution    |
-| `OPENCODE_EXPERIMENTAL_SCOUT`                   | boolean | Enable Scout subagent                   |
 | `OPENCODE_EXPERIMENTAL_WORKSPACES`              | boolean | Enable workspace support                |

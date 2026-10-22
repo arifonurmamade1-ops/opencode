@@ -68,6 +68,8 @@ nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev
 
 OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
 
+The desktop app includes an agent dashboard, an embedded browser panel, inline edit commands, and the same local or remote server support as the CLI. Learn more in the [desktop docs](https://opencode.ai/docs/desktop).
+
 | Platform              | Download                           |
 | --------------------- | ---------------------------------- |
 | macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
@@ -99,18 +101,26 @@ XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
 
 ### Agents
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
+OpenCode includes three built-in primary agents you can switch between with the `Tab` key.
 
 - **build** - Default, full-access agent for development work
 - **plan** - Read-only agent for analysis and code exploration
   - Denies file edits by default
   - Asks permission before running bash commands
   - Ideal for exploring unfamiliar codebases or planning changes
+- **autonomous** - Controlled end-to-end agent with evidence gates and a delivery artifact
 
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
+Also included are **general**, **explore**, and **security** subagents. They can be invoked with `@general`, `@explore`, or `@security` in messages.
 
 Learn more about [agents](https://opencode.ai/docs/agents).
+
+### Built-in workflows
+
+- **Schedule work** - Run a task immediately, at a time, on a recurring schedule, or when a condition is met with `/schedule`. See the [scheduler docs](https://opencode.ai/docs/scheduler).
+- **Remember project knowledge** - Save durable architecture notes, decisions, conventions, and commands with `/memory`. See the [memory docs](https://opencode.ai/docs/memory).
+- **Audit security** - Ask `@security` for an evidence-based review of secrets, dependencies, injection, and other risks. See the [security docs](https://opencode.ai/docs/security).
+- **Diagnose locally** - Run `opencode doctor` or `/doctor` for a static check of configuration, providers, models, MCP, Git, permissions, storage, and dependencies. See the [CLI docs](https://opencode.ai/docs/cli#doctor).
+- **Work remotely** - Run the server on one machine and attach a TUI, browser, or desktop client from another. See the [remote access docs](https://opencode.ai/docs/remote).
 
 ### Documentation
 

@@ -1,0 +1,95 @@
+---
+title: Scheduler
+description: Run agent tasks immediately, on a schedule, or when a condition is met.
+---
+
+The scheduler starts an agent session for work that should happen later or repeatedly. Tasks are stored per project and run while that project is open in OpenCode.
+
+Use the built-in `/schedule` command to create and manage tasks in natural language.
+
+```text frame="none"
+/schedule run the tests every weekday at 18:00
+```
+
+```text frame="none"
+/schedule check the build at 08:00 and report failures
+```
+
+```text frame="none"
+/schedule when `bun test` fails, investigate the failure and open a draft fix
+```
+
+---
+
+## Schedule formats
+
+Each task has a schedule that describes when it should run.
+
+| Type        | Format                                                                 | Example                                                        |
+| ----------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `immediate` | Run on the next scheduler tick                                         | `{ "type": "immediate" }`                                      |
+| `at`        | One ISO-8601 date-time                                                 | `{ "type": "at", "time": "2026-11-01T09:00:00-03:00" }`        |
+| `interval`  | A duration using `s`, `m`, `h`, `d`, or `w`                             | `{ "type": "interval", "every": "2h" }`                        |
+| `daily`     | A local time in `HH:MM`                                                | `{ "type": "daily", "at": "08:00" }`                           |
+| `cron`      | A five-field cron expression                                           | `{ "type": "cron", "expression": "0 8 * * 1-5" }`              |
+| `condition` | A shell check, expected result, and optional polling interval          | `{ "type": "condition", "check": "bun test", "expect": "success" }` |
+
+Times and cron expressions use the local time of the machine running the server. Cron supports `*`, values, ranges, lists, steps, and month or weekday names.
+
+Condition checks run in the project directory. On Windows they run through PowerShell; on other platforms they use `$SHELL` or `/bin/sh`. The default check interval is five minutes, and a condition only starts a run when it changes from not matching to matching. A check that cannot start is treated as not matching, so an `expect: "failure"` task does not fire because the check itself is broken.
+
+---
+
+## Manage tasks
+
+The agent uses the `schedule` tool to manage tasks. The available actions are:
+
+| Action    | What it does                                                                 |
+| --------- | ---------------------------------------------------------------------------- |
+| `add`     | Create a task. Requires a `prompt` and a `schedule`.                        |
+| `list`    | List tasks in the current project, including their next run time.            |
+| `run`     | Queue a task to run on the next scheduler tick.                              |
+| `enable`  | Enable a single task.                                                        |
+| `disable` | Disable a single task without deleting it.                                   |
+| `remove`  | Delete a task by id.                                                         |
+| `status`  | Show the scheduler state, or enable/disable the whole scheduler.             |
+
+You can set a task name, agent, and model when adding it. Without an explicit agent or model, the task uses the project defaults.
+
+```text frame="none"
+/schedule list my tasks and show the next run time
+```
+
+```text frame="none"
+/schedule disable task tsk_123
+```
+
+```text frame="none"
+/schedule turn the scheduler off
+```
+
+The scheduler is enabled by default. Disabling it stops scheduled and conditional runs until it is enabled again.
+
+---
+
+## Execution
+
+When a task runs, OpenCode creates a new session titled `scheduled: <name or id>` and sends the task prompt to the selected agent. The task records its last run time, a short result, and the session id so you can inspect the work.
+
+- Runs happen while the project is open. OpenCode is not a background service, so closing it stops the scheduler.
+- An overdue task becomes due when the project reopens, but runs missed while OpenCode was closed are not replayed one by one.
+- Only one run of a task can be active at a time. Starting a task while it is already running queues it for the next tick.
+- Tool approvals still apply. An unattended task may wait if it needs permission for a tool.
+
+Scheduled prompts execute with the same permissions and tools as an interactive session. Only create tasks from prompts and condition commands you trust.
+
+---
+
+## Limitations
+
+- There is no external cron daemon or cloud scheduler. Tasks run inside the OpenCode process.
+- Condition commands run on the host with the project as their working directory. They are not sandboxed.
+- The scheduler does not guarantee delivery at an exact second. It checks for due tasks every 15 seconds.
+- Tasks are project-scoped. A task created in one project is not visible from another project.
+
+Inspect the scheduler's configured state with the `schedule` tool's `status` action. See [Tools](/docs/tools) for the full built-in tool list.

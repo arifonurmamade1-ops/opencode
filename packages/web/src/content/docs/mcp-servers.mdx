@@ -123,7 +123,8 @@ Here are all the options for configuring a local MCP server.
 | `cwd`         | String  |          | Working directory for the MCP server process. Relative paths resolve from the workspace. |
 | `environment` | Object  |          | Environment variables to set when running the server.                                    |
 | `enabled`     | Boolean |          | Enable or disable the MCP server on startup.                                             |
-| `timeout`     | Number  |          | Timeout in ms for fetching tools from the MCP server. Defaults to 5000 (5 seconds).      |
+| `sandbox`     | Boolean |          | Reduce inherited environment variables and confine the working directory to the workspace. |
+| `timeout`     | Number  |          | Timeout in ms for MCP server requests. Defaults to 30000 (30 seconds).                   |
 
 ---
 
@@ -160,7 +161,51 @@ The `url` is the URL of the remote MCP server and with the `headers` option you 
 | `enabled` | Boolean |          | Enable or disable the MCP server on startup.                                        |
 | `headers` | Object  |          | Headers to send with the request.                                                   |
 | `oauth`   | Object  |          | OAuth authentication configuration. See [OAuth](#oauth) section below.              |
-| `timeout` | Number  |          | Timeout in ms for fetching tools from the MCP server. Defaults to 5000 (5 seconds). |
+| `timeout` | Number  |          | Timeout in ms for MCP server requests. Defaults to 30000 (30 seconds).               |
+
+---
+
+## Access policy
+
+Local and remote servers can define default permissions, retries, rate limits, and trust behavior. These settings apply to every tool the server exposes.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "example": {
+      "type": "local",
+      "command": ["my-mcp-server"],
+      "permission": {
+        "*": "ask",
+        "read_file": "allow"
+      },
+      "trusted": false,
+      "retry": {
+        "attempts": 3,
+        "delay": 250
+      },
+      "rateLimit": {
+        "requests": 60,
+        "window": 60000
+      },
+      "sandbox": true
+    }
+  }
+}
+```
+
+| Option       | Type    | Description                                                                                           |
+| ------------ | ------- | ----------------------------------------------------------------------------------------------------- |
+| `permission` | Object  | Default rules for the server's tools, keyed by tool name. Values are `allow`, `ask`, `deny`, or a map of names to actions. `*` covers every tool. |
+| `trusted`    | Boolean | Skip permission prompts for this server's tools. Explicit `deny` rules still apply. Defaults to `false`. |
+| `retry`      | Object  | Retry transport failures. `attempts` includes the first try; `delay` is in milliseconds. Tool-level errors and rate limits are not retried. |
+| `rateLimit`  | Object  | Allow at most `requests` tool calls per `window` milliseconds. Calls over the limit fail immediately. |
+| `sandbox`    | Boolean | Local servers only. Inherit only a minimal environment and require the working directory to stay inside the workspace. This is not an OS-level sandbox. |
+
+Agent and session permission rules override the server defaults. Agents can also choose which servers they may use with the `mcp` field in their configuration. See [Agents](/docs/agents) and [Security](/docs/security).
+
+Use the `mcp` tool to inspect connection status, policy, tool counts, and call counters without opening a separate client.
 
 ---
 

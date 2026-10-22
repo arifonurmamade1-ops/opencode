@@ -812,6 +812,74 @@ Place plugin files in `.opencode/plugins/` or `~/.config/opencode/plugins/`. You
 
 ---
 
+### Lifecycle hooks
+
+Lifecycle hooks run shell commands at session stages. They are best-effort observers: a hook cannot block the stage that triggered it, and failures are logged instead of failing the session.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "hooks": {
+    "after_edit": "bun run lint",
+    "before_commit": [
+      {
+        "command": "bun test",
+        "timeout": 120000
+      }
+    ]
+  }
+}
+```
+
+Supported stages:
+
+| Stage           | Runs around                                      |
+| --------------- | ------------------------------------------------ |
+| `before_task`   | a task tool invocation                           |
+| `after_task`    | a task tool invocation                           |
+| `before_tool`   | any tool invocation                              |
+| `after_tool`    | any tool invocation                              |
+| `before_model`  | a model request                                  |
+| `after_model`   | a model response                                 |
+| `before_edit`   | `edit`, `write`, or `apply_patch`                |
+| `after_edit`    | `edit`, `write`, or `apply_patch`                |
+| `before_commit` | a commit made through the Git tool                     |
+| `after_commit`  | a commit made through the Git tool                     |
+| `on_error`      | a session error                                  |
+| `on_stop`       | a session becomes idle                           |
+
+Each stage accepts a command string, an array of command strings, or objects with `command` and `timeout` in milliseconds. The default timeout is 30 seconds. Commands run in the project directory. On Windows they run through `cmd.exe`; elsewhere they use `$SHELL` or `/bin/sh`.
+
+Each command receives a JSON payload on stdin and these environment variables:
+
+- `OPENCODE_HOOK` - the stage name
+- `OPENCODE_HOOK_DIRECTORY` - the project directory
+- `OPENCODE_HOOK_SESSION` - the session id, when available
+- `OPENCODE_HOOK_TOOL` - the tool name, when available
+
+Global and project hooks are merged; the global list runs first and exact duplicates are dropped. Use the `hook` tool to inspect the merged configuration. Hooks are different from [plugin hooks](/docs/plugins), which run in-process through the plugin API.
+
+---
+
+### Telemetry
+
+Local telemetry is disabled by default. Enable it to let the `telemetry` tool report aggregate usage from this machine's session database.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "telemetry": {
+    "enabled": true
+  }
+}
+```
+
+Reports include tokens, cost, latency, throughput, tool calls and failures, provider retries, models, providers, and per-task outcomes. They are computed on demand and contain aggregate numbers only, not prompts, file contents, paths, or titles. Nothing is transmitted anywhere and there is no background collection.
+
+Disable it by removing the section or setting `enabled` to `false`. See [Tools](/docs/tools#telemetry) for the tool parameters.
+
+---
+
 ### Instructions
 
 You can configure the instructions for the model you're using through the `instructions` option.

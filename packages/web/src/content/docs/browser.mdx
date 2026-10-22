@@ -1,0 +1,50 @@
+---
+title: Browser
+description: View web pages beside a session with the embedded browser panel.
+---
+
+OpenCode includes a browser panel in the session view. It is useful for reading documentation, checking a local development server, or following a link from the conversation without leaving the app.
+
+The panel is a viewer. It does not give the agent browser automation or control over the page.
+
+---
+
+## Open the panel
+
+Use the command palette and run **Toggle browser**. The panel opens beside the current session and can be resized or closed.
+
+Clicking an external link in a rendered chat message opens it in the browser panel instead of leaving OpenCode.
+
+---
+
+## Controls
+
+The panel has a URL bar and the usual navigation controls:
+
+- **Back** and **Forward** move through the panel's history.
+- **Reload** reloads the current page.
+- **Open in new tab** opens the current page in your default browser.
+- **Close** hides the panel.
+
+Only `http` and `https` URLs are accepted. URLs without a scheme are treated as HTTPS.
+
+History is kept per workspace and server, so switching projects does not mix their browsing history.
+
+---
+
+## Embedded pages
+
+The panel uses an [iframe](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe), so a site can refuse to be embedded. Common causes are `X-Frame-Options` and a Content-Security-Policy `frame-ancestors` rule. Use **Open in new tab** for those sites.
+
+Some sites also behave differently when embedded, for example by blocking sign-in or third-party cookies. In those cases open the page in your regular browser.
+
+---
+
+## What the panel does not do
+
+- The agent cannot click, type, scroll, or read the page through the panel.
+- There is no browser-automation runtime and no browser security scanner.
+- The panel does not bypass the site's authentication or embedding policy.
+- It is not a sandbox for untrusted content. Treat pages you open with the same caution as pages in a normal browser.
+
+See [Desktop](/docs/desktop) for the other app surfaces and [Web](/docs/web) for the browser-based OpenCode interface.
