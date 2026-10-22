@@ -135,6 +135,15 @@ export const Event = ModelsDev.Event
 
 declare const OPENCODE_MODELS_DEV: Record<string, Provider> | undefined
 
+/**
+ * Build-time catalog snapshot. Returns undefined when the build did not embed
+ * a catalog, or when running from source without the generated global.
+ * Pure and safe to call without an instance or network access.
+ */
+export function snapshot() {
+  return typeof OPENCODE_MODELS_DEV === "undefined" ? undefined : OPENCODE_MODELS_DEV
+}
+
 export interface Interface {
   readonly get: () => Effect.Effect<Record<string, Provider>>
   readonly refresh: (force?: boolean) => Effect.Effect<void>

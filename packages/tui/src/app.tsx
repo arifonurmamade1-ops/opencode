@@ -44,6 +44,7 @@ import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogDebug } from "./component/dialog-debug"
+import { DialogDoctor } from "./component/dialog-doctor"
 import { DialogThemeList } from "./component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogAgent } from "./component/dialog-agent"
@@ -777,6 +778,15 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         slashName: "debug",
         run: () => {
           dialog.replace(() => <DialogDebug />)
+        },
+        category: "System",
+      },
+      {
+        name: "opencode.doctor",
+        title: "Run doctor",
+        slashName: "doctor",
+        run: () => {
+          dialog.replace(() => <DialogDoctor />)
         },
         category: "System",
       },

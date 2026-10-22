@@ -9,6 +9,10 @@ export const OAUTH_DUMMY_KEY = "opencode-oauth-dummy-key"
 
 const file = path.join(Global.Path.data, "auth.json")
 
+export function filepath() {
+  return file
+}
+
 const fail = (message: string) => (cause: unknown) => new AuthError({ message, cause })
 
 export class Oauth extends Schema.Class<Oauth>("OAuth")({
