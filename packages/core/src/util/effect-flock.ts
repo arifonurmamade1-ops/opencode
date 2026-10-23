@@ -101,7 +101,6 @@ export namespace EffectFlock {
       const fs = yield* FSUtil.Service
       const lockRoot = path.join(global.state, "locks")
       const hostname = os.hostname()
-      const ensuredDirs = new Set<string>()
 
       // -- helpers (close over fs) --
 
@@ -141,10 +140,12 @@ export namespace EffectFlock {
         return false
       })
 
+      // Always (re)create before acquiring: the state directory can be rebuilt
+      // or wiped while this layer is alive, and caching the first mkdir would
+      // skip the recreate and leave the atomic lock-dir creation failing with
+      // ENOENT.
       const ensureDir = Effect.fnUntraced(function* (dir: string) {
-        if (ensuredDirs.has(dir)) return
         yield* fs.makeDirectory(dir, { recursive: true }).pipe(Effect.orDie)
-        ensuredDirs.add(dir)
       })
 
       const isStale = Effect.fnUntraced(function* (lockDir: string, heartbeatPath: string, metaPath: string) {
