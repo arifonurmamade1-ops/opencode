@@ -76,7 +76,7 @@ Additional test hardening:
 
 ## Failures
 
-- `packages/opencode/test/tool/task.test.ts`: runtime failures with `InstanceRef not provided` in background-task cancellation cases.
+- `packages/opencode/test/tool/task.test.ts`: runtime failures with `InstanceRef not provided` in background-task cancellation cases. TaskTool now propagates the current `InstanceRef` to background runs, but these cases still require deeper BackgroundJob/instance-runtime debugging.
 - `packages/opencode/test/plugin/api.test.ts`: one unnamed subtest intermittently times out due to a `beforeEach`/`afterEach` hook.
 - `bun typecheck` in `packages/opencode` is still blocked by known, untracked slide WIP:
   - `packages/core/src/tool/slide.ts`
