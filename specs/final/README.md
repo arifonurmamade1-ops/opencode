@@ -76,18 +76,32 @@ Additional test hardening:
 
 ## Failures
 
-- `packages/opencode/test/tool/task.test.ts`: runtime failures with `InstanceRef not provided` in background-task cancellation cases. TaskTool now propagates the current `InstanceRef` to background runs, but these cases still require deeper BackgroundJob/instance-runtime debugging.
-- `packages/opencode/test/plugin/api.test.ts`: one unnamed subtest intermittently times out due to a `beforeEach`/`afterEach` hook.
-- `bun typecheck` in `packages/opencode` is still blocked by known, untracked slide WIP:
+All failing cases recorded in this phase are now resolved except the intentionally untracked slide WIP below.
+
+- RESOLVED — `packages/opencode/test/tool/task.test.ts`: the whole suite used to die at ToolRegistry layer build with `InstanceRef not provided`.
+  - WHAT: TaskTool called `yield* InstanceState.directory` inside the tool init effect, which `ToolRegistry` fulfills eagerly while building the test layer, outside any instance context.
+  - WHY: `InstanceState.context` dies when `InstanceRef` is absent; ToolRegistry build provides no instance.
+  - WHERE: `packages/opencode/src/tool/task.ts` (TaskTool init), introduced by `722324c` (branch worktree support).
+  - ATTEMPTED: propagating `InstanceRef` captured at init was wrong because `InstanceRef` is a `Context.Reference` with an `undefined` default — the captured value was always `undefined`. After bisecting node-by-node, the worktree directory resolution was moved from tool init into the per-run execute closure.
+  - RESULT: `bun test test/tool/task.test.ts` passes 23/23, including every background-task case.
+- RESOLVED — `packages/opencode/test/plugin/api.test.ts`: an unnamed subtest intermittently failed with "a beforeEach/afterEach hook timed out".
+  - WHAT: the global `test/preload.ts` `afterAll` imported the heavy `app-runtime` module (~60 service modules) inside the teardown hook even for suites that never touched `AppRuntime`, pushing the hook past bun's default 5s hook timeout on slow machines.
+  - WHY: bun counts a suite-level `afterAll` as an unnamed hook test and flags it as timed out.
+  - WHERE: `packages/opencode/test/preload.ts`, `packages/opencode/src/effect/app-runtime.ts`.
+  - ATTEMPTED: added `src/effect/app-runtime-usage.ts` usage latch; `AppRuntime.run*` entries mark usage, and the preload `afterAll` only imports/disposes `AppRuntime` when used.
+  - RESULT: `bun test test/plugin/api.test.ts` passes 19/19, and the failure no longer reproduces on minimal probe files either.
+- REMAINING — `bun typecheck` in `packages/opencode` is still blocked by known, untracked slide WIP:
   - `packages/core/src/tool/slide.ts`
   - `packages/core/src/tool/slide-node.ts`
   - `packages/opencode/src/slide/**`
 - Full opencode typecheck also references pre-existing slide WIP expectations elsewhere in the repository.
 
-These failures are documented rather than masked or faked.
+These outcomes are documented rather than masked or faked.
 
 ## Fixes
 
+- Resolved the whole-suite `InstanceRef not provided` die in `packages/opencode/test/tool/task.test.ts` by resolving the TaskTool worktree directory per run instead of inside the eagerly built tool init.
+- Resolved the intermittent unnamed hook timeout by making the preload `afterAll` import/dispose `AppRuntime` only when the suite actually used it (`src/effect/app-runtime-usage.ts`).
 - Corrected Git test mock typing and cast the mocked object to the current Git interface.
 - Kept slide WIP uncommitted and unstaged per repository rules.
 - Restored documentation claims to implemented behavior only.
@@ -118,13 +132,13 @@ These failures are documented rather than masked or faked.
 - Remote access has no cloud relay, dedicated control plane, mobile app guarantees, TLS, or RBAC.
 - Telemetry is local-only, disabled by default, and computed on demand.
 - Artifacts are individual Markdown files, not a general artifact browser or dashboard.
-- Two pre-existing test failures and slide WIP typecheck failures remain.
+- Two pre-existing test failures are resolved; slide WIP typecheck failures remain and slide WIP stays untracked.
 - Localized, non-English documentation directories were intentionally not updated; English web docs were updated only.
 
 ## Next phase
 
 No further roadmap phase is marked complete from this commit set beyond the implemented features above. Open work items:
-1. Repair `InstanceRef` propagation in `packages/opencode/test/tool/task.test.ts` background cancellation tests.
-2. Address the intermittent `packages/opencode/test/plugin/api.test.ts` hook timeout.
+1. ~~Repair `InstanceRef` propagation in `packages/opencode/test/tool/task.test.ts` background cancellation tests.~~ Done: the tool init no longer requires an instance; the worktree directory resolves per run and the suite passes 23/23.
+2. ~~Address the intermittent `packages/opencode/test/plugin/api.test.ts` hook timeout.~~ Done: the preload `afterAll` only imports/disposes `AppRuntime` when the suite used it; the suite passes 19/19.
 3. Remove or complete the slide WIP (`packages/core/src/tool/slide*.ts`, `packages/opencode/src/slide/**`) only when explicitly requested.
 4. Continue expanding automated tests for browser, remote execution, provider retry behavior, and recovery paths.
