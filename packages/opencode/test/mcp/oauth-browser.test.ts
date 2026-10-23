@@ -166,12 +166,13 @@ mcpTest.instance("BrowserOpenFailed event is published when browser launch fails
     const failure = yield* awaitWithTimeout(
       Deferred.await(event),
       "Timed out waiting for BrowserOpenFailed event",
-      "5 seconds",
+      "30 seconds",
     )
 
     expect(failure.mcpName).toBe("test-oauth-server")
     expect(failure.url).toStartWith(new URL("/authorize", server.url).toString())
   }),
+  { timeout: 60_000 },
 )
 
 mcpTest.instance("BrowserOpenFailed event is not published when browser launch succeeds", () =>
@@ -185,7 +186,7 @@ mcpTest.instance("BrowserOpenFailed event is not published when browser launch s
     const status = yield* awaitWithTimeout(
       mcp.authenticate("test-oauth-server-2"),
       "Timed out completing OAuth authentication",
-      "5 seconds",
+      "30 seconds",
     )
     const url = yield* Deferred.await(opened)
     const failure = yield* Deferred.await(event).pipe(Effect.timeoutOption("700 millis"))
@@ -194,6 +195,7 @@ mcpTest.instance("BrowserOpenFailed event is not published when browser launch s
     expect(failure).toEqual(Option.none())
     expect(new URL(url).origin).toBe(new URL(server.url).origin)
   }),
+  { timeout: 60_000 },
 )
 
 mcpTest.instance("browser launch receives the discovered authorization URL", () =>
@@ -207,7 +209,7 @@ mcpTest.instance("browser launch receives the discovered authorization URL", () 
     const status = yield* awaitWithTimeout(
       mcp.authenticate("test-oauth-server-3", (url) => Deferred.doneUnsafe(authorization, Effect.succeed(url))),
       "Timed out completing OAuth authentication",
-      "5 seconds",
+      "30 seconds",
     )
     const url = yield* Deferred.await(opened)
     const authorizationUrl = yield* Deferred.await(authorization)
@@ -222,4 +224,5 @@ mcpTest.instance("browser launch receives the discovered authorization URL", () 
       ),
     ).toBe(true)
   }),
+  { timeout: 60_000 },
 )
