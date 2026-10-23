@@ -1,7 +1,7 @@
 import { describe, expect } from "bun:test"
 import { BackgroundJob } from "@opencode-ai/core/background-job"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import { Deferred, Effect, Exit, Scope } from "effect"
+import { Deferred, Effect, Exit, Option, Scope } from "effect"
 import { it } from "./lib/effect"
 
 const jobsLayer = LayerNode.compile(BackgroundJob.node)
@@ -102,5 +102,35 @@ describe("BackgroundJob", () => {
       // The abandoned in-memory registry is not a durable observation channel.
       expect((yield* jobs.get(job.id))?.status).toBe("running")
     }),
+  )
+
+  it.live("resolves waitForPromotion immediately once a job is marked background", () =>
+    Effect.gen(function* () {
+      const jobs = yield* BackgroundJob.Service
+      const latch = yield* Deferred.make<void>()
+      const job = yield* jobs.start({
+        type: "test",
+        run: Deferred.await(latch).pipe(Effect.as("held")),
+      })
+
+      expect((yield* jobs.promote(job.id))?.metadata?.background).toBe(true)
+      expect((yield* jobs.waitForPromotion(job.id)).metadata?.background).toBe(true)
+
+      yield* jobs.cancel(job.id)
+    }).pipe(Effect.provide(jobsLayer)),
+  )
+
+  it.live("leaves waitForPromotion pending for unknown or settled jobs so callers own the timeout", () =>
+    Effect.gen(function* () {
+      const jobs = yield* BackgroundJob.Service
+
+      expect(yield* jobs.waitForPromotion("job_unknown").pipe(Effect.timeoutOption("100 millis"))).toEqual(
+        Option.none(),
+      )
+
+      const job = yield* jobs.start({ type: "test", run: Effect.succeed("done") })
+      yield* jobs.wait({ id: job.id })
+      expect(yield* jobs.waitForPromotion(job.id).pipe(Effect.timeoutOption("100 millis"))).toEqual(Option.none())
+    }).pipe(Effect.provide(jobsLayer)),
   )
 })
