@@ -19,7 +19,8 @@ type CapturedPrompt = {
 const storage = memoryStorage()
 const prompts: CapturedPrompt[] = []
 const creates: Array<{ title?: string; agent?: string }> = []
-const checkResults: number[] = []
+const checkResults: Array<number | "spawn-error"> = []
+let promptFailure: Error | undefined
 
 const sessionLayer = Layer.mock(Session.Service, {
   create: (input) =>
@@ -30,23 +31,30 @@ const sessionLayer = Layer.mock(Session.Service, {
 })
 
 const promptLayer = Layer.mock(SessionPrompt.Service, {
-  prompt: (input) =>
-    Effect.sync(() => {
-      prompts.push(input as unknown as CapturedPrompt)
-      return {} as never
-    }),
+  prompt: (input) => {
+    prompts.push(input as unknown as CapturedPrompt)
+    if (promptFailure) return Effect.fail(promptFailure) as never
+    return Effect.sync(() => ({}) as never)
+  },
 })
 
 const processLayer = Layer.mock(AppProcess.Service, {
-  run: () =>
-    Effect.sync(() => ({
+  run: () => {
+    const next = checkResults.shift()
+    if (next === "spawn-error") {
+      // The check command cannot even run (missing binary): a defect, which the
+      // runner must treat as "not matched".
+      return Effect.die(new Error("spawn: command not found")) as never
+    }
+    return Effect.sync(() => ({
       command: "check",
-      exitCode: checkResults.shift() ?? 0,
+      exitCode: next ?? 0,
       stdout: Buffer.from(""),
       stderr: Buffer.from(""),
       stdoutTruncated: false,
       stderrTruncated: false,
-    })),
+    }))
+  },
 })
 
 const it = testEffect(
@@ -63,6 +71,7 @@ beforeEach(() => {
   prompts.length = 0
   creates.length = 0
   checkResults.length = 0
+  promptFailure = undefined
 })
 
 describe("scheduler runner", () => {
@@ -163,6 +172,62 @@ describe("scheduler runner", () => {
       const report = yield* runner.tick({ now: Date.now() + 60_000 })
       expect(report).toEqual({ started: 0, checks: 0, condition: 0 })
       expect(prompts).toHaveLength(0)
+    }),
+  )
+
+  it.instance("records a failed scheduled run without wedging recurring tasks", () =>
+    Effect.gen(function* () {
+      const scheduler = yield* Scheduler.Service
+      const runner = yield* SchedulerRunner.Service
+      const base = Date.now()
+      const task = yield* scheduler.add({
+        name: "flaky probes",
+        prompt: "Run the probe",
+        schedule: { type: "interval", every: "30m" },
+      })
+      promptFailure = new Error("provider exploded")
+
+      expect((yield* runner.tick({ now: base + 31 * 60_000 })).started).toBe(1)
+      expect(prompts).toHaveLength(1)
+
+      const after = yield* scheduler.get(task.id)
+      expect(after?.state.runs).toBe(1)
+      expect(after?.state.running).toBe(false)
+      expect(after?.state.lastSessionID).toBeUndefined()
+      expect(after?.state.lastResult).toContain("provider exploded")
+      expect(after?.enabled).toBe(true)
+
+      // The next slot is still claimable: a failed run never disables the task.
+      expect((yield* runner.tick({ now: base + 62 * 60_000 })).started).toBe(1)
+      expect(prompts).toHaveLength(2)
+      expect((yield* scheduler.get(task.id))?.state.runs).toBe(2)
+    }),
+  )
+
+  it.instance("treats broken checks as not matched but keeps the failure edge armed", () =>
+    Effect.gen(function* () {
+      const scheduler = yield* Scheduler.Service
+      const runner = yield* SchedulerRunner.Service
+      const base = Date.now()
+      const task = yield* scheduler.add({
+        prompt: "investigate",
+        schedule: { type: "condition", check: "false", expect: "failure", every: "5m" },
+      })
+
+      // The check command cannot even spawn: no run launches on this tick.
+      checkResults.push("spawn-error")
+      const first = yield* runner.tick({ now: base + 60_000 })
+      expect(first.checks).toBe(1)
+      expect(first.condition).toBe(0)
+      expect(prompts).toHaveLength(0)
+      expect((yield* scheduler.get(task.id))?.state.lastCheckMatched).toBe(false)
+
+      // A later healthy failing check still fires the edge.
+      checkResults.push(1)
+      const second = yield* runner.tick({ now: base + 7 * 60_000 })
+      expect(second.condition).toBe(1)
+      expect(prompts).toHaveLength(1)
+      expect((yield* scheduler.get(task.id))?.state.lastCheckMatched).toBe(true)
     }),
   )
 })

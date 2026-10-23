@@ -161,4 +161,62 @@ describe("scheduler store", () => {
       expect((yield* scheduler.claimChecks(first + 5 * 60_000)).map((item) => item.id)).toEqual([task.id])
     }),
   )
+
+  it.instance("reclaims tasks whose run never reported back after the stale window", () =>
+    Effect.gen(function* () {
+      const scheduler = yield* Scheduler.Service
+      const base = Date.now()
+      const task = yield* scheduler.add({ prompt: "lost", schedule: { type: "interval", every: "30m" } })
+
+      const claimed = yield* scheduler.claimDue(base + 31 * 60_000)
+      expect(claimed.map((item) => item.id)).toEqual([task.id])
+      // In flight within the stale window: not claimable even though the slot
+      // has passed again.
+      expect(yield* scheduler.claimDue(base + 35 * 60_000)).toEqual([])
+
+      // A run that never reported back (crash, hard kill) must not block the
+      // task forever.
+      const reclaimed = yield* scheduler.claimDue(base + 95 * 60_000)
+      expect(reclaimed.map((item) => item.id)).toEqual([task.id])
+      expect(reclaimed[0]?.state.running).toBe(true)
+    }),
+  )
+
+  it.instance("records failed runs without wedging the task", () =>
+    Effect.gen(function* () {
+      const scheduler = yield* Scheduler.Service
+      const base = Date.now()
+      const task = yield* scheduler.add({ prompt: "flaky", schedule: { type: "interval", every: "30m" } })
+      expect((yield* scheduler.claimDue(base + 31 * 60_000)).map((item) => item.id)).toEqual([task.id])
+
+      yield* scheduler.recordRun({ id: task.id, time: base + 31 * 60_000, error: "subagent crashed" })
+      const after = yield* scheduler.get(task.id)
+      expect(after?.state.running).toBe(false)
+      expect(after?.state.runs).toBe(1)
+      expect(after?.state.lastResult).toBe("subagent crashed")
+      expect(after?.state.lastSessionID).toBeUndefined()
+      expect(after?.enabled).toBe(true)
+
+      // The next slot is still claimable after a failed run.
+      expect((yield* scheduler.claimDue(base + 62 * 60_000)).map((item) => item.id)).toEqual([task.id])
+
+      yield* scheduler.recordRun({ id: task.id, time: base + 62 * 60_000, sessionID: "ses_ok" })
+      const recovered = yield* scheduler.get(task.id)
+      expect(recovered?.state.lastResult).toBe("ok")
+      expect(recovered?.state.lastSessionID).toBe("ses_ok")
+    }),
+  )
+
+  it.instance("truncates oversized failure reports in task state", () =>
+    Effect.gen(function* () {
+      const scheduler = yield* Scheduler.Service
+      const task = yield* scheduler.add({ prompt: "spew", schedule: { type: "immediate" } })
+      expect((yield* scheduler.claimDue(Date.now())).map((item) => item.id)).toEqual([task.id])
+
+      yield* scheduler.recordRun({ id: task.id, time: Date.now(), error: "x".repeat(600) })
+      const after = yield* scheduler.get(task.id)
+      expect(after?.state.lastResult).toHaveLength(503)
+      expect(after?.state.lastResult?.endsWith("...")).toBe(true)
+    }),
+  )
 })
