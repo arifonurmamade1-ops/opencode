@@ -15,7 +15,6 @@ import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Database } from "@opencode-ai/core/database/database"
 import { Git } from "@opencode-ai/core/git"
-import { InstanceRef } from "@/effect/instance-ref"
 import { InstanceState } from "@/effect/instance-state"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 
@@ -96,20 +95,22 @@ export const TaskTool = Tool.define(
     const scope = yield* Scope.Scope
     const flags = yield* RuntimeFlags.Service
     const database = yield* Database.Service
-    const instance = yield* InstanceRef
-    // `git`/`gitWorktreeDir` are provisioned in the TaskTool scope alongside
-    // Agent/Session, so the per-run execute fn does not advertise Git.Service or
-    // InstanceState in its env (keeps existing Layer-based tests green).
+    // `git` is provisioned in the TaskTool scope alongside Agent/Session, so
+    // the per-run execute fn does not advertise Git.Service in its env (keeps
+    // existing Layer-based tests green).
+    // The worktree directory is resolved per run instead of at tool init:
+    // ToolRegistry builds tools outside any instance context, and
+    // `InstanceState.directory` dies there when InstanceRef is absent.
     const git = yield* Git.Service
-    const gitWorktreeDir = yield* InstanceState.directory
 
     const run = Effect.fn("TaskTool.execute")(function* (
       params: Schema.Schema.Type<typeof Parameters>,
       ctx: Tool.Context,
     ) {
+      const gitWorktreeDir = yield* InstanceState.directory
       const cfg = yield* config.get()
       const runInBackground = params.background === true
-      // Git + InstanceState come from the TaskTool scope closure; only resolve
+      // Git comes from the TaskTool scope closure; only resolve
       // discover/branch when a target branch is requested so non-branch tasks
       // are unaffected and never hit git.
       let gitRepository: Git.Repository | undefined
@@ -233,7 +234,7 @@ export const TaskTool = Tool.define(
             repository: gitRepository,
             directory: AbsolutePath.make(`${gitWorktreeDir}/worktrees/${params.branch}`),
           })
-          .pipe(Effect.ignore, Effect.provideService(InstanceRef, instance), Effect.forkIn(scope, { startImmediately: true }))
+          .pipe(Effect.ignore, Effect.forkIn(scope, { startImmediately: true }))
       }
 
       const ops = ctx.extra?.promptOps as TaskPromptOps
@@ -292,7 +293,7 @@ export const TaskTool = Tool.define(
               },
             ],
           })
-          .pipe(Effect.ignore, Effect.provideService(InstanceRef, instance), Effect.forkIn(scope, { startImmediately: true }))
+          .pipe(Effect.ignore, Effect.forkIn(scope, { startImmediately: true }))
       })
 
       const notify = Effect.fn("TaskTool.notifyBackgroundResult")(function* (jobID: string) {
@@ -302,12 +303,11 @@ export const TaskTool = Tool.define(
             if (result.info?.status === "error") return inject("error", result.info.error ?? "")
             return Effect.void
           }),
-          Effect.provideService(InstanceRef, instance),
           Effect.forkIn(scope, { startImmediately: true }),
         )
       })
 
-      if (yield* background.extend({ id: nextSession.id, run: runTask().pipe(Effect.provideService(InstanceRef, instance)) })) {
+      if (yield* background.extend({ id: nextSession.id, run: runTask() })) {
         return {
           title: params.description,
           metadata: {
