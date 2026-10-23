@@ -70,6 +70,12 @@ Relevant suites executed include:
 - `packages/opencode/test/error/report.test.ts`
 - `packages/opencode/test/compatibility/audit.test.ts`
 
+FASE 38 coverage expansion (all passing):
+- `packages/opencode/test/mcp/browser.test.ts`: added the launcher spawn-failure branch (underlying error surfaced, no exit-code wrapper) and the 500ms grace-window branch (resolved by the grace timer when the launcher stays alive). Existing tests gained explicit 30s timeouts because this machine's cold `bun.exe` child spawns measured ~3.4s against bun's 5s default.
+- `packages/opencode/test/scheduler/runner.test.ts`: added failure recording end-to-end (prompt failure is persisted as the run result, task stays enabled and re-claims) and broken-check handling (a check that cannot spawn counts as not matched and does not fire `failure` conditions, while a later healthy failing check still fires the edge).
+- `packages/opencode/test/scheduler/scheduler.test.ts`: added stale running-marker reclaim after the one-hour window, failed-run state recording without wedging, and 500-char failure-report truncation.
+- `packages/core/test/background-job.test.ts`: added `waitForPromotion` semantics — immediate snapshot once a job is marked background, and `Effect.never` for unknown or settled jobs so callers own the timeout.
+
 Additional test hardening:
 - Updated TaskTool Git mocks in `packages/opencode/test/tool/task.test.ts` to match the current `Git.Service` interfaces, allowing `bun typecheck` to progress to pre-existing unrelated slide WIP errors.
 - Ran typechecks for `packages/opencode`.
@@ -107,6 +113,7 @@ These outcomes are documented rather than masked or faked.
 - Restored documentation claims to implemented behavior only.
 - Fixed MCP timeout documentation default from 5s to 30s.
 - Corrected hooks commit-stage documentation wording.
+- Made the FASE 38 browser launcher tests robust on slow hosts: measured cold `bun.exe` child spawns at ~3.4s exceed bun's 5s default test timeout, so the browser tests carry explicit 30s timeouts, and the launcher `error` branch uses a deterministic event emitter instead of racing real spawn failure timing.
 
 ## Performance
 
@@ -141,4 +148,4 @@ No further roadmap phase is marked complete from this commit set beyond the impl
 1. ~~Repair `InstanceRef` propagation in `packages/opencode/test/tool/task.test.ts` background cancellation tests.~~ Done: the tool init no longer requires an instance; the worktree directory resolves per run and the suite passes 23/23.
 2. ~~Address the intermittent `packages/opencode/test/plugin/api.test.ts` hook timeout.~~ Done: the preload `afterAll` only imports/disposes `AppRuntime` when the suite used it; the suite passes 19/19.
 3. Remove or complete the slide WIP (`packages/core/src/tool/slide*.ts`, `packages/opencode/src/slide/**`) only when explicitly requested.
-4. Continue expanding automated tests for browser, remote execution, provider retry behavior, and recovery paths.
+4. ~~Continue expanding automated tests for browser, remote execution, provider retry behavior, and recovery paths.~~ Done: gap analysis found provider retry/fallback/escalation, interrupted-tool recovery, crash-scope job interruption, and remote exposure/auth already covered; added browser launcher error/grace branches, scheduler failed-run + broken-check recovery, stale running-marker reclaim, report truncation, and background-job `waitForPromotion` semantics. All suites pass; typecheck clean except the known untracked slide WIP.
