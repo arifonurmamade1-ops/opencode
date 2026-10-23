@@ -76,6 +76,9 @@ FASE 38 coverage expansion (all passing):
 - `packages/opencode/test/scheduler/scheduler.test.ts`: added stale running-marker reclaim after the one-hour window, failed-run state recording without wedging, and 500-char failure-report truncation.
 - `packages/core/test/background-job.test.ts`: added `waitForPromotion` semantics — immediate snapshot once a job is marked background, and `Effect.never` for unknown or settled jobs so callers own the timeout.
 
+Follow-up sweep over the touched neighborhoods also executed and green:
+- `packages/opencode/test/scheduler/wiring.test.ts`, `packages/opencode/test/scheduler/schedule.test.ts` (the remaining scheduler suites), `packages/opencode/test/background/job.test.ts` (the instance-scoped wrapper), and `packages/opencode/test/mcp/oauth-browser.test.ts` (after the effect-flock fix and slow-host budgets below).
+
 Additional test hardening:
 - Updated TaskTool Git mocks in `packages/opencode/test/tool/task.test.ts` to match the current `Git.Service` interfaces, allowing `bun typecheck` to progress to pre-existing unrelated slide WIP errors.
 - Ran typechecks for `packages/opencode`.
@@ -96,6 +99,12 @@ All failing cases recorded in this phase are now resolved except the intentional
   - WHERE: `packages/opencode/test/preload.ts`, `packages/opencode/src/effect/app-runtime.ts`.
   - ATTEMPTED: added `src/effect/app-runtime-usage.ts` usage latch; `AppRuntime.run*` entries mark usage, and the preload `afterAll` only imports/disposes `AppRuntime` when used.
   - RESULT: `bun test test/plugin/api.test.ts` passes 19/19, and the failure no longer reproduces on minimal probe files either.
+- RESOLVED — `packages/opencode/test/mcp/oauth-browser.test.ts`: all three tests failed with `SSE error: PlatformError: NotFound: FileSystem.makeDirectory (...opencode\locks\<hash>.lock): ENOENT`.
+  - WHAT: the second and later `EffectFlock.acquire` calls died creating the per-key lock dir because its parent (`state/opencode/locks`) had been removed and rebuilt since the layer's first acquire.
+  - WHY: `ensureDir` cached its result in `ensuredDirs`, so it never re-created the lock root; `atomicMkdir` is deliberately non-atomic-parentless and only catches `AlreadyExists`.
+  - WHERE: `packages/core/src/util/effect-flock.ts` (introduced long before this FASE; the sweep surfaced it).
+  - ATTEMPTED: dropping the cache — `ensureDir` now unconditionally runs `makeDirectory(dir, { recursive: true })` before each acquire. Verified neutral for the rest of the flock suite via an A/B stash run (same 9 pass / 2 fail pre-existing process-contention timeouts without the fix).
+  - RESULT: the lock ENOENT no longer reproduces; `bun test test/mcp/oauth-browser.test.ts` passes 3/3 with the slow-host budgets below (inner `awaitWithTimeout` raised from 5s to 30s and per-test bun timeout to 60s, because this machine needs 13–33s for flows that take <5s on CI-class hosts).
 - REMAINING — `bun typecheck` in `packages/opencode` is still blocked by known, untracked slide WIP:
   - `packages/core/src/tool/slide.ts`
   - `packages/core/src/tool/slide-node.ts`
@@ -114,6 +123,7 @@ These outcomes are documented rather than masked or faked.
 - Fixed MCP timeout documentation default from 5s to 30s.
 - Corrected hooks commit-stage documentation wording.
 - Made the FASE 38 browser launcher tests robust on slow hosts: measured cold `bun.exe` child spawns at ~3.4s exceed bun's 5s default test timeout, so the browser tests carry explicit 30s timeouts, and the launcher `error` branch uses a deterministic event emitter instead of racing real spawn failure timing.
+- Made `EffectFlock` self-healing when the state directory is rebuilt: dropped the `ensureDir` cache so every acquire re-creates the lock root recursively before the atomic lock-dir mkdir, fixing a permanent ENOENT mode for config write and MCP OAuth lock operations after a state-dir wipe.
 
 ## Performance
 
