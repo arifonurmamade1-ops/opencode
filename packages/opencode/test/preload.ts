@@ -10,8 +10,15 @@ import { afterAll } from "bun:test"
 const dir = path.join(os.tmpdir(), "opencode-test-data-" + process.pid)
 await fs.mkdir(dir, { recursive: true })
 afterAll(async () => {
-  const { AppRuntime } = await import("../src/effect/app-runtime")
-  await AppRuntime.dispose()
+  // Only suites that actually ran work through AppRuntime need to dispose it.
+  // Importing app-runtime is expensive (~60 service modules); pulling it in
+  // from inside this hook can exceed bun's default 5s hook timeout on slow
+  // environments, which bun reports as an unnamed hook failure for the file.
+  const { appRuntimeUsed } = await import("../src/effect/app-runtime-usage")
+  if (appRuntimeUsed()) {
+    const { AppRuntime } = await import("../src/effect/app-runtime")
+    await AppRuntime.dispose()
+  }
 
   const busy = (error: unknown) =>
     typeof error === "object" && error !== null && "code" in error && error.code === "EBUSY"

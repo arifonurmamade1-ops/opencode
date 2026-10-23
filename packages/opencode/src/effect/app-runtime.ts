@@ -1,4 +1,5 @@
 import { Layer, ManagedRuntime } from "effect"
+import { markAppRuntimeUsed } from "./app-runtime-usage"
 import { attach } from "./run-service"
 import * as Observability from "@opencode-ai/core/observability"
 
@@ -117,18 +118,23 @@ const wrap = (effect: Parameters<typeof rt.runSync>[0]) => attach(effect as neve
 
 export const AppRuntime: Runtime = {
   runSync(effect) {
+    markAppRuntimeUsed()
     return rt.runSync(wrap(effect))
   },
   runPromise(effect, options) {
+    markAppRuntimeUsed()
     return rt.runPromise(wrap(effect), options)
   },
   runPromiseExit(effect, options) {
+    markAppRuntimeUsed()
     return rt.runPromiseExit(wrap(effect), options)
   },
   runFork(effect) {
+    markAppRuntimeUsed()
     return rt.runFork(wrap(effect))
   },
   runCallback(effect) {
+    markAppRuntimeUsed()
     return rt.runCallback(wrap(effect))
   },
   dispose: () => rt.dispose(),
