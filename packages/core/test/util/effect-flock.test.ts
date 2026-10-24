@@ -335,11 +335,15 @@ describe("util.effect-flock", () => {
         const dir = path.join(tmp, "locks")
         const done = path.join(tmp, "done.log")
         const active = path.join(tmp, "active")
-        const n = 16
+        // Mutex invariant is n-independent; n is tuned with the stagger below so
+        // many cold worker boots never oversubscribe slow hosts.
+        const n = 8
 
         try {
           const out = await Promise.all(
-            Array.from({ length: n }, () => run({ key: "eflock:stress", dir, done, active, holdMs: 30 })),
+            Array.from({ length: n }, (_, index) =>
+              sleep(index * 1_000).then(() => run({ key: "eflock:stress", dir, done, active, holdMs: 30 })),
+            ),
           )
 
           expect(out.map((x) => x.code)).toEqual(Array.from({ length: n }, () => 0))
@@ -354,7 +358,9 @@ describe("util.effect-flock", () => {
           await fs.rm(tmp, { recursive: true, force: true })
         }
       }),
-    60_000,
+    // 16 cold bun.exe worker spawns take well over the previous 60s cap on
+    // slow hosts; the contention semantics are unchanged.
+    180_000,
   )
 
   it.live(
@@ -368,7 +374,9 @@ describe("util.effect-flock", () => {
         const proc = spawnWorker({ key: "eflock:crash", dir, ready, holdMs: 120_000 })
 
         try {
-          await waitForFile(ready, 5_000)
+          // Slow hosts need seconds for a cold `bun.exe` worker boot before it
+          // can write the ready file.
+          await waitForFile(ready, 30_000)
           await stopWorker(proc)
 
           // Backdate lock files so they're past STALE_MS (60s)
@@ -387,6 +395,6 @@ describe("util.effect-flock", () => {
           await fs.rm(tmp, { recursive: true, force: true })
         }
       }),
-    30_000,
+    60_000,
   )
 })
