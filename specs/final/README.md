@@ -77,7 +77,7 @@ FASE 38 coverage expansion (all passing):
 - `packages/core/test/background-job.test.ts`: added `waitForPromotion` semantics — immediate snapshot once a job is marked background, and `Effect.never` for unknown or settled jobs so callers own the timeout.
 
 Follow-up sweep over the touched neighborhoods also executed and green:
-- `packages/opencode/test/scheduler/wiring.test.ts`, `packages/opencode/test/scheduler/schedule.test.ts` (the remaining scheduler suites), `packages/opencode/test/background/job.test.ts` (the instance-scoped wrapper), and `packages/opencode/test/mcp/oauth-browser.test.ts` (after the effect-flock fix and slow-host budgets below).
+- `packages/opencode/test/scheduler/wiring.test.ts`, `packages/opencode/test/scheduler/schedule.test.ts` (the remaining scheduler suites), `packages/opencode/test/background/job.test.ts` (the instance-scoped wrapper), `packages/opencode/test/mcp/oauth-browser.test.ts` (after the effect-flock fix and slow-host budgets below), and `packages/core/test/util/effect-flock.test.ts` (11/11 after the lock-root fix and slow-host pressure tuning below).
 
 Additional test hardening:
 - Updated TaskTool Git mocks in `packages/opencode/test/tool/task.test.ts` to match the current `Git.Service` interfaces, allowing `bun typecheck` to progress to pre-existing unrelated slide WIP errors.
@@ -105,6 +105,18 @@ All failing cases recorded in this phase are now resolved except the intentional
   - WHERE: `packages/core/src/util/effect-flock.ts` (introduced long before this FASE; the sweep surfaced it).
   - ATTEMPTED: dropping the cache — `ensureDir` now unconditionally runs `makeDirectory(dir, { recursive: true })` before each acquire. Verified neutral for the rest of the flock suite via an A/B stash run (same 9 pass / 2 fail pre-existing process-contention timeouts without the fix).
   - RESULT: the lock ENOENT no longer reproduces; `bun test test/mcp/oauth-browser.test.ts` passes 3/3 with the slow-host budgets below (inner `awaitWithTimeout` raised from 5s to 30s and per-test bun timeout to 60s, because this machine needs 13–33s for flows that take <5s on CI-class hosts).
+- RESOLVED — `packages/core/test/util/effect-flock.test.ts`: the two multi-process contention tests failed on this host at every prior budget (workers were still alive at the caps).
+  - WHAT: with `n = 16` workers spawned simultaneously, cold `bun.exe` boot compilation oversubscribes this machine so heavily that individual worker lifetimes reach 150s+; the runner then kills the test and its now-dangling children, which also starved the following crash-owner test's `ready` window even at 30s.
+  - WHY: worker boot cost under mount-wide JIT contention, not any lock behavior — a single probe worker (code 0, ready written) and a staggered 4-way/8-way probe all succeed.
+  - WHERE: `packages/core/test/util/effect-flock.test.ts` (test-local pressure and budget knobs only).
+  - ATTEMPTED: raising caps first (180s alone was insufficient, off by ~1s), then staggered spawns: `n = 8` with 1s spawn stagger proved empirically green at 74s (3× headroom), keeping real multi-process lock contention with the same invariant assertions.
+  - RESULT: `bun test test/util/effect-flock.test.ts` passes 11/11 in 167s on this host, including "enforces mutual exclusion under process contention" and "recovers after a crashed lock owner".
+- RESOLVED — `packages/opencode/test/lib/effect.ts` harness: `it.instance` documented a 4th `opts` timeout argument that the fall-through branch of `instanceArgs` silently discarded.
+  - WHAT: passing `{ timeout }` as the 4th argument had no effect when the 3rd argument was not an InstanceOptions object; the timeout had to ride in as the 3rd argument instead.
+  - WHY: `instanceArgs` returned `testOptions: options` without consulting `testOptions` in the final branch.
+  - WHERE: `packages/opencode/test/lib/effect.ts` (`instanceArgs`).
+  - ATTEMPTED: `testOptions: testOptions ?? options` in the fall-through branch, preserving the existing 3rd-argument timeout and InstanceOptions-object behaviors.
+  - RESULT: `bun test test/scheduler/` passes 32/32 with the shared harness change in place.
 - REMAINING — `bun typecheck` in `packages/opencode` is still blocked by known, untracked slide WIP:
   - `packages/core/src/tool/slide.ts`
   - `packages/core/src/tool/slide-node.ts`
@@ -124,6 +136,7 @@ These outcomes are documented rather than masked or faked.
 - Corrected hooks commit-stage documentation wording.
 - Made the FASE 38 browser launcher tests robust on slow hosts: measured cold `bun.exe` child spawns at ~3.4s exceed bun's 5s default test timeout, so the browser tests carry explicit 30s timeouts, and the launcher `error` branch uses a deterministic event emitter instead of racing real spawn failure timing.
 - Made `EffectFlock` self-healing when the state directory is rebuilt: dropped the `ensureDir` cache so every acquire re-creates the lock root recursively before the atomic lock-dir mkdir, fixing a permanent ENOENT mode for config write and MCP OAuth lock operations after a state-dir wipe.
+- Tuned the flock multi-process tests to slow hosts (`n = 8` staggered worker spawns, larger caps) without changing their mutex invariant assertions, and fixed `instanceArgs` to honor the documented 4th-argument test timeout in `it.instance`.
 
 ## Performance
 
