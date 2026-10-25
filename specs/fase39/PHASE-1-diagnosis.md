@@ -21,7 +21,7 @@ Status legend: **Done** = implemented and tested; **Partial** = exists but incom
 
 | Phase | Title | Status | Evidence / gaps |
 |---|---|---|---|
-| 1 | Architecture + diagnosis | In progress (this doc) | Baseline established. |
+| 1 | Architecture + diagnosis | **Done** | Baseline established; phase outcomes recorded in section 2 and the per-phase specs. |
 | 2 | Agent Manager + task graph | **Done (PHASE 2)** | Task graph: `autonomous/task.ts` (pure state machine). Agent registry: `agent/agent.ts`. **New**: `agent/manager.ts` (`AgentManager.Service`) — start/list/get/cancel/runAll/runForTask, per-instance registry, session-backed execution, parallel fan-out, evidence-friendly RunInfo. Limitations documented in `PHASE-2-agent-manager.md`. |
 | 3 | Multi-agent orchestration | **Done (PHASE 3)** | New service: `packages/opencode/src/orchestration.ts` (`Orchestration.Service`) — plan validation (unique/known/self/cycle), wave-based parallel execution via AgentManager, skip propagation on failed deps, fan-out/fan-in via `dependsOn`, cancellation between waves, per-instance run registry. Tests: `packages/opencode/test/orchestration.test.ts` (8/8). Limitations: inline waves (no mid-flight cancel), no explicit fan-in aggregator, process-local. |
 | 4 | Browser Agent | **Done (PHASE 4)** | Implemented with playwright-core via packages/opencode/src/browser.ts (Browser.Service) plus agent tool packages/opencode/src/tool/browser.ts. Tests: packages/opencode/test/browser.test.ts (3/3). Backend uses Node child process because Chromium launching wedges under Bun. |
@@ -30,27 +30,26 @@ Status legend: **Done** = implemented and tested; **Partial** = exists but incom
 | 7 | Memory + context engine | **Done (core)** | `packages/core/src/memory.ts` (list/save/remove, project-scoped), `system-context/*`, memory context (capped 40 entries / ~500 tokens). Memory tool in core. Tests: `memory.test.ts`, `tool-memory.test.ts`, `memory-context.test.ts`, `memory-command.test.ts`. |
 | 8 | Security + sandbox | **Partial (documented)** | Existing security scanner, permission policy, MCP sandbox marking. OS-level jail not feasible without native deps (FASE 40). See specs/fase39/PHASE-8-os-sandbox.md. |
 | 9 | Scheduler + remote agents | **Done (core + opencode)** | Scheduler: `packages/opencode/src/scheduler/{scheduler,runner,schedule}.ts` with durable tasks, condition checks, stale-running reclaim, truncation. Remote execution: server/client architecture (`server/*`, `control-plane`), remote-guard tests, auth. Tests comprehensive (sweep: 32/32). |
-| 10 | UI/UX + desktop | **Not validated (FASE 40)** | App/web/desktop packages exist. `bun run typecheck` in `packages/app` is blocked on this Windows host by `src/custom-elements.d.ts` being committed as a symlink-as-text file (contents = `../../ui/src/custom-elements.d.ts`, git mode 100644) which tsgo rejects (TS1128). Confirmed pre-existing and unrelated to this arc. Details: `specs/fase39/PHASE-10-ui-desktop.md`. |
+| 10 | UI/UX + desktop | **Done (validated)** | App/desktop typecheck pass; app `vite build`, desktop `electron-vite build`, and web `astro build` pass. Unblocked by three fixes: portable custom-elements reference (was a Windows-broken symlink), missing `dashboard.agents.pending` plural key, and a strict-JSON trailing comma in root `package.json`. Pre-existing i18n parity drift documented. See `specs/fase39/PHASE-10-ui-desktop.md`. |
 | 11 | Performance | **Partial (documented)** | Existing: telemetry module (`packages/opencode/src/telemetry.ts`), benchmark cases. No dedicated performance harness or profiling added in this arc — FASE 40 applies: a perf module would have to be backed by measured workloads, and none are defined beyond the benchmark suite. See `PHASE-11-12-hardening.md`. |
 | 12 | Benchmark + hardening | **Done (validated)** | Benchmark service exists and green: `packages/opencode/src/benchmark/*` (deterministic cases, JSON persistence under global data dir, run comparison), tool registered in `tool/registry.ts`; `bun test test/benchmark/run.test.ts` 3/3 pass. Hardening across the arc: FASE 38 coverage (browser, scheduler, recovery, provider retry, background-job promotion semantics), FASE 39 sweep fixing `EffectFlock` lock-root recreation and slow-host budgets, plus this phase's validation. |
 
 ## 3. Gaps requiring decisions (FASE 40)
 
-- **PHASE 4 Browser Agent**: implemented with playwright-core (explicit dependency decision approved by the user). Real service Browser.Service, agent tool rowser, integration tests. See specs/fase39/PHASE-4-browser-agent.md.
-- **PHASE 8 OS sandbox**: documented as limitation (no native OS bindings). Static scanner + permission policy is the honest scope. See specs/fase39/PHASE-8-os-sandbox.md.
-- **PHASE 5 general artifact store**: could be implemented (Markdown files on disk already exist for autonomous tasks) — small, scoped, recommended.
-- **PHASE 2 Agent Manager**: implementable as a service composing existing `agent/agent.ts` + `autonomous/task.ts` + session runner — recommended next.
-- **PHASE 6 standalone Model Router**: implementable as a service over `SessionRunnerModel` + `ModelFallback` — medium scope.
+- **PHASE 8 OS sandbox**: documented limitation; a real jail needs native platform bindings. Static
+  scanner + permission policy is the honest scope. See specs/fase39/PHASE-8-os-sandbox.md.
+- **PHASE 10 residuals**: runtime Electron launch, Windows symlink checkout for public assets, and
+  pre-existing i18n parity drift. See specs/fase39/PHASE-10-ui-desktop.md.
+- **PHASE 11 performance**: no measured workload harness or regression thresholds yet. See
+  specs/fase39/PHASE-11-12-hardening.md.
+- **PHASE 4 Browser Agent dependency**: resolved with the explicitly approved playwright-core
+  dependency. See specs/fase39/PHASE-4-browser-agent.md.
 
-## 4. Recommended execution order
+## 4. Execution outcome
 
-1. PHASE 2 — Agent Manager + task graph (foundation; task graph already exists as pure module).
-2. PHASE 6 — Model Router + fallback (composes existing fallback).
-3. PHASE 5 — Artifacts + verification (small, builds on autonomous task).
-4. PHASE 3 — Multi-agent orchestration (depends on 2).
-5. PHASE 11/12 — Performance + benchmark + hardening (last, after features stable).
-
-PHASE 8: keep as documented limitation unless an explicit dependency decision is made.
+The recommended order was followed and completed: PHASE 2 → 6 → 5 → 3 → 4 → 8 (documented) →
+10 (validated) → 11/12. All remaining work is captured under section 3 and in the final report
+(`specs/fase39/FASE-39-report.md`).
 
 ## 5. Constraints carried forward
 
@@ -63,4 +62,4 @@ PHASE 8: keep as documented limitation unless an explicit dependency decision is
 
 ## 6. Next action
 
-Awaiting explicit go for PHASE 2 (Agent Manager + task graph). No code changes in this phase beyond this diagnosis document.
+FASE 39 phases are closed: PHASE 10 is validated and the implementation phases are done or documented. Remaining FASE 40 items are the PHASE 8 OS-level sandbox (needs native platform bindings) and the PHASE 11 performance harness (needs measured workloads). See the final report in `specs/fase39/FASE-39-report.md`.
