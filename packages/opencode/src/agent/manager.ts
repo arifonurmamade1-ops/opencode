@@ -4,7 +4,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { Agent } from "./agent"
 import { Session } from "@/session/session"
 import { SessionPrompt } from "@/session/prompt"
-import { Cause, Context, Effect, Exit, Layer, Schema } from "effect"
+import { Cause, Context, Effect, Exit, Layer } from "effect"
 
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "cancelled"
 
@@ -55,7 +55,9 @@ const layer = Layer.effect(
 
     const start = Effect.fn("AgentManager.start")(function* (input: { agent: string; prompt: string; taskID?: string }) {
       // Resolve the agent up front so an unknown agent fails before any session is created.
-      yield* agents.get(input.agent)
+      // `Agent.get` is typed as returning `Info` but yields `undefined` for unknown names today.
+      const agent = yield* agents.get(input.agent)
+      if (!agent) return yield* Effect.die(new Error(`agent not found: ${input.agent}`))
 
       const id = Identifier.create("run", "descending")
       const startedAt = Date.now()

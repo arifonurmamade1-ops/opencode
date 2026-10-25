@@ -6,7 +6,7 @@ Scope: implement the missing "Agent Manager" that owns agent run lifecycle and c
 ## What was implemented
 
 - New service: `packages/opencode/src/agent/manager.ts` (`AgentManager.Service`, `@opencode/AgentManager`).
-  - `start({ agent, prompt, taskID? })` — resolves the agent first (unknown agent fails before any session is created), creates a session titled `agent: <name>`, prompts the agent, records per-run status (`running` → `completed`/`failed`) with session id, output summary (first 500 chars of the assistant parts) or error (`Cause.pretty`).
+  - `start({ agent, prompt, taskID? })` — resolves the agent first (unknown agent fails as a defect before any session is created; `Agent.get` has no typed error today), creates a session titled `agent: <name>`, prompts the agent, records per-run status (`running` → `completed`/`failed`) with session id, output summary (first 500 chars of the assistant parts) or error (`Cause.pretty`).
   - `list()` / `get(id)` — process-local registry scoped per instance directory (via `InstanceState`).
   - `cancel(id)` — flips `pending`/`running` runs to `cancelled` (see limitations).
   - `runAll({ agent, prompts })` — parallel fan-out with `concurrency: "unbounded"`, one `RunInfo` per prompt.
@@ -21,7 +21,7 @@ Scope: implement the missing "Agent Manager" that owns agent run lifecycle and c
   - failed run (prompt failure → `failed`, error, session id retained, output absent, completedAt)
   - parallel `runAll` (3 runs, all completed, list length 3)
   - unknown run → `get`/`cancel` return undefined
-  - agent resolution happens before session creation (unknown agent → no session, no prompt)
+  - agent resolution happens before session creation (unknown agent → defect, no session, no prompt)
   - `runForTask` carries `taskID` and prompt
 
 ## Limitations (FASE 40)

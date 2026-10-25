@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect } from "bun:test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import { Effect, Layer } from "effect"
+import { Cause, Effect, Exit, Layer } from "effect"
 import { Agent } from "@/agent/agent"
 import { Session } from "@/session/session"
 import { SessionPrompt } from "@/session/prompt"
@@ -15,10 +15,7 @@ let promptFailure: Error | undefined
 let unknownAgent = false
 
 const agentLayer = Layer.mock(Agent.Service, {
-  get: (name: string) =>
-    unknownAgent && name === "missing"
-      ? Effect.fail(new Error("agent not found"))
-      : Effect.succeed({ name, permission: [] } as any),
+  get: (name: string) => Effect.succeed((unknownAgent && name === "missing" ? undefined : { name, permission: [] }) as any),
 })
 
 const sessionLayer = Layer.mock(Session.Service, {
@@ -115,8 +112,9 @@ describe("agent manager", () => {
       const manager = yield* AgentManager.Service
       unknownAgent = true
 
-      const error = yield* manager.start({ agent: "missing", prompt: "x" }).pipe(Effect.flip)
-      expect(error.message).toContain("agent not found")
+      const exit = yield* manager.start({ agent: "missing", prompt: "x" }).pipe(Effect.exit)
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isFailure(exit)) expect(Cause.pretty(exit.cause)).toContain("agent not found: missing")
       expect(creates).toHaveLength(0)
       expect(prompts).toHaveLength(0)
     }),
