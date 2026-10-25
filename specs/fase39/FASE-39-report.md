@@ -1,0 +1,126 @@
+# FASE 39 — Final report
+
+Date: 2026-10-25.
+Scope: FASE 39 "Implementation by phases" (12 phases) on the current repository state.
+Rules applied: FASE 40 (no fake implementations; every blocked item reported with
+FEATURE/STATUS/LIMITATION/TECHNICAL REASON/WHAT WAS IMPLEMENTED/WHAT REMAINS) and FASE 41
+(no deleting working code, no unnecessary public API changes, no unnecessary dependencies,
+multiplatform solutions, test every relevant change).
+
+## Phase status
+
+| Phase | Title | Status | Evidence |
+|---|---|---|---|
+| 1 | Architecture + diagnosis | **Done** | `specs/fase39/PHASE-1-diagnosis.md` |
+| 2 | Agent Manager + task graph | **Done** | `packages/opencode/src/agent/manager.ts` (`AgentManager.Service`), `test/agent/manager.test.ts` 6/6 |
+| 3 | Multi-agent orchestration | **Done** | `packages/opencode/src/orchestration.ts` (`Orchestration.Service`), `test/orchestration.test.ts` 8/8 |
+| 4 | Browser Agent | **Done** | `packages/opencode/src/browser.ts` (`Browser.Service`), `src/browser-worker.cjs`, `src/tool/browser.ts`, `test/browser.test.ts` 3/3 |
+| 5 | Artifacts + verification | **Done** | `packages/opencode/src/artifact.ts` (`Artifact.Service`), `test/artifact.test.ts` 5/5 |
+| 6 | Model Router + fallback | **Done** | `packages/core/src/model-router.ts` (`ModelRouter.Service`), `test/model-router.test.ts` 8/8 |
+| 7 | Memory + context engine | **Done (existing core)** | `packages/core/src/memory.ts`, `system-context/*`, memory tool and context; suites green |
+| 8 | Security + sandbox | **Partial (documented)** | Scanner + permissions validated (`test/security/scanner.test.ts` 25/25); OS jail blocked by native-dependency constraint. See `PHASE-8-os-sandbox.md` |
+| 9 | Scheduler + remote agents | **Done (existing)** | `packages/opencode/src/scheduler/*`, server/client remote execution, sweep 32/32 |
+| 10 | UI/UX + desktop | **Done (validated)** | App/desktop typecheck pass; app, desktop, and web production builds pass. See `PHASE-10-ui-desktop.md` |
+| 11 | Performance | **Partial (documented)** | No measured performance harness added; telemetry + benchmark suites only. See `PHASE-11-12-hardening.md` |
+| 12 | Benchmark + hardening | **Done** | `packages/opencode/src/benchmark/*`, `test/benchmark/run.test.ts` 3/3; hardening and flake fixes across FASE 38–39 |
+
+## New code and docs
+
+- `packages/opencode/src/agent/manager.ts`
+- `packages/opencode/src/orchestration.ts`
+- `packages/opencode/src/artifact.ts`
+- `packages/core/src/model-router.ts`
+- `packages/opencode/src/browser.ts`
+- `packages/opencode/src/browser-worker.cjs`
+- `packages/opencode/src/tool/browser.ts`
+- Tests: `packages/opencode/test/agent/manager.test.ts`, `test/orchestration.test.ts`,
+  `test/artifact.test.ts`, `test/browser.test.ts`, `packages/core/test/model-router.test.ts`
+- Specs: `specs/fase39/*` including this report
+
+## Cross-cutting fixes made during validation
+
+- **Root `package.json` strict JSON**: removed a trailing comma in the `catalog` block that broke
+  Vite/esbuild config loading (`JSON does not support trailing commas`).
+- **Portable custom-elements declaration**: replaced the
+  `packages/app/src/custom-elements.d.ts` symlink (mode `120000`) with a regular `100644` file
+  containing a `/// <reference>` to the ui package declaration. Windows checkouts with
+  `core.symlinks=false` previously stored the link target as text and failed `tsgo -b` with
+  `TS1128`.
+- **Dashboard plural key**: added `"dashboard.agents.pending"` to the app `PluralKey` union so
+  the existing dashboard call sites typecheck.
+
+No public API was changed and no existing feature was removed.
+
+## Validation summary
+
+| Area | Command | Result |
+|---|---|---|
+| opencode typecheck | `bun run typecheck` (from `packages/opencode`) | only the known untracked slide WIP errors |
+| core typecheck | `bun run typecheck` (from `packages/core`) | only the known untracked slide WIP errors |
+| Agent Manager | `bun test test/agent/manager.test.ts` | 6/6 |
+| Orchestration | `bun test test/orchestration.test.ts` | 8/8 |
+| Artifacts | `bun test test/artifact.test.ts` | 5/5 |
+| Model Router | `bun test test/model-router.test.ts` | 8/8 |
+| Browser | `bun test test/browser.test.ts` | 3/3 (66s) |
+| Security scanner | `bun test test/security/scanner.test.ts` | 25/25 |
+| Benchmark | `bun test test/benchmark/run.test.ts` | 3/3 |
+| App typecheck | `bun run typecheck` (from `packages/app`) | pass |
+| App build | `bun run build` (from `packages/app`) | pass, 12m36s |
+| App unit subset | serialize + desktop-menu + file-tree + status-popover | 27/27 |
+| Desktop typecheck | `bun run typecheck` (from `packages/desktop`) | pass |
+| Desktop build | `electron-vite build` (from `packages/desktop`) | pass, 4m25s with `--max-old-space-size=4096` |
+| Web build | `bun run build` (from `packages/web`) | pass, 1380s server build |
+
+## FASE 40 — limitations report
+
+### PHASE 8 — real OS sandbox
+
+- FEATURE: OS-level sandbox / filesystem jail for tool execution.
+- STATUS: not implemented; documented limitation.
+- LIMITATION: the repository can scan statically and gate permissions, but it cannot confine a
+  process at the OS level.
+- TECHNICAL REASON: `seccomp-bpf` (Linux), Job Objects/AppContainer (Windows), and
+  `sandbox-exec`/Seatbelt (macOS) require native bindings or platform-specific helpers; no such
+  dependency exists and FASE 41 forbids inventing one. A JavaScript-level imitation would be a
+  fake sandbox.
+- WHAT WAS IMPLEMENTED: existing security scanner (25/25 tests), permission policy (`allow` /
+  `ask` / `deny` with overrides), MCP local-server sandbox marking, static scan exposed as the
+  `security` tool.
+- WHAT REMAINS: introduce a native sandbox dependency or per-OS helper behind a first-class
+  `Sandbox` service consumed by shell execution. See `PHASE-8-os-sandbox.md`.
+
+### PHASE 10 — residual environment limits
+
+- FEATURE: runtime validation of the desktop app and fully correct local UI artifacts.
+- STATUS: compile/typecheck validated; runtime launch not validated.
+- LIMITATION: Electron cannot be launched from this checkout and the Windows checkout produces
+  broken public image assets.
+- TECHNICAL REASON: `packages/desktop/node_modules/electron/dist` has no `electron.exe`; the
+  host is a 6 GB / 2-core Windows machine with `core.symlinks=false`, so the
+  `packages/app/public` symlinks are checked out as text stubs. Node's default ~2 GB heap also
+  OOMs the desktop/web bundles, requiring an explicit larger heap.
+- WHAT WAS IMPLEMENTED: portable custom-elements reference, dashboard plural key fix, strict-JSON
+  catalog fix; app/desktop typecheck and app/desktop/web production builds validated.
+- WHAT REMAINS: run the full app unit suite (blocked by pre-existing i18n parity drift on this
+  branch), launch/package Electron on a machine with the Electron binary, and enable git
+  symlinks (or copy assets at build time) for correct Windows icons. See
+  `PHASE-10-ui-desktop.md`.
+
+### PHASE 11 — performance
+
+- FEATURE: dedicated performance profiling/harness with measured workloads.
+- STATUS: not implemented; documented limitation.
+- LIMITATION: no workload-based perf harness or regression thresholds were added.
+- TECHNICAL REASON: no representative production workloads are defined in-repo beyond the
+  benchmark cases; FASE 40 forbids presenting unmeasured numbers as results.
+- WHAT WAS IMPLEMENTED: existing telemetry module and the benchmark suite (3/3).
+- WHAT REMAINS: define measured workloads, capture a baseline, and add regression thresholds.
+  See `PHASE-11-12-hardening.md`.
+
+## Constraints preserved
+
+- `bun.lock` was never staged.
+- Slide WIP files (`packages/core/src/tool/slide*.ts`, `packages/opencode/src/slide/**`) remain
+  untracked and untouched.
+- Only the explicitly approved dependency (`playwright-core`) was added.
+- Tests were run from package directories; typechecks use `bun typecheck`.
