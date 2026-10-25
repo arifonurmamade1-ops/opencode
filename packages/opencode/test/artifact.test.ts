@@ -9,18 +9,21 @@ const layer = LayerNode.compile(Artifact.node)
 const it = testEffect(layer)
 
 describe("artifact", () => {
-  it.instance("writes and reads an artifact", () =>
-    Effect.gen(function* () {
-      const artifact = yield* Artifact.Service
-      const file = yield* artifact.write("report", "# Report\n\nhello")
-      expect(file.endsWith(path.join(".opencode", "artifacts", "report.md"))).toBe(true)
+  it.instance(
+    "writes and reads an artifact",
+    () =>
+      Effect.gen(function* () {
+        const artifact = yield* Artifact.Service
+        const file = yield* artifact.write("report", "# Report\n\nhello")
+        expect(file.endsWith(path.join(".opencode", "artifacts", "report.md"))).toBe(true)
 
-      const content = yield* artifact.read("report")
-      expect(content).toBe("# Report\n\nhello")
+        const content = yield* artifact.read("report")
+        expect(content).toBe("# Report\n\nhello")
 
-      const dir = yield* artifact.dir()
-      expect(dir.endsWith(path.join(".opencode", "artifacts"))).toBe(true)
-    }),
+        const dir = yield* artifact.dir()
+        expect(dir.endsWith(path.join(".opencode", "artifacts"))).toBe(true)
+      }),
+    30_000,
   )
 
   it.instance("lists written artifacts with metadata", () =>

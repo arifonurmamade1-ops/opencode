@@ -71,6 +71,10 @@ No public API was changed and no existing feature was removed.
 | Desktop build | `electron-vite build` (from `packages/desktop`) | pass, 4m25s with `--max-old-space-size=4096` |
 | Web build | `bun run build` (from `packages/web`) | pass, 1380s server build |
 
+Flake note: on the combined 47-test run, the first artifact test hit the default 5 s test
+budget once on this 2-core host. The isolated artifact suite passed 5/5 (42 s), and that test
+now carries a 30 s per-test budget, consistent with other slow-host suites.
+
 ## FASE 40 — limitations report
 
 ### PHASE 8 — real OS sandbox
