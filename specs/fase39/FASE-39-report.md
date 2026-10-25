@@ -124,3 +124,75 @@ No public API was changed and no existing feature was removed.
   untracked and untouched.
 - Only the explicitly approved dependency (`playwright-core`) was added.
 - Tests were run from package directories; typechecks use `bun typecheck`.
+
+## OPENCODE EVOLUTION REPORT
+
+### Features added
+
+- Agent Manager with session-backed starts, listing, cancellation, and parallel fan-out.
+- Multi-agent orchestration with validated dependency graphs, wave execution, skip propagation,
+  and cancellation between waves.
+- Artifact store with Markdown persistence and evidence-based verification against acceptance
+  criteria.
+- Standalone Model Router with catalog routing and fallback composition.
+- Browser Agent driving headless Chromium through the `browser` tool (navigation, click, fill,
+  text, title, evaluate, screenshot, page lifecycle).
+
+### Features improved
+
+- App typechecking is now portable across Windows/Linux/macOS (custom-elements reference).
+- Root workspace metadata is strict JSON again, so Vite/esbuild consumers load it correctly.
+- Dashboard plural call sites are typed against the shared language API.
+
+### Architecture
+
+- New services follow the existing `Context.Service` + `LayerNode` + `InstanceState` pattern and
+  are additive: no public API was replaced or removed.
+- Browser control is split into a Bun-side Effect service and a Node worker
+  (`browser-worker.cjs`) because Chromium launching wedges under Bun; the worker communicates
+  over an ephemeral localhost HTTP server and is disposed with the instance.
+- Runtime dependency direction is preserved (Schema → Core/Protocol → Server; no Client → Core
+  or Client → Server edges).
+
+### Tests
+
+- Agent Manager 6/6, orchestration 8/8, artifacts 5/5, model router 8/8, browser 3/3,
+  security scanner 25/25, benchmark 3/3, app UI subset 27/27.
+- App and desktop typechecks pass; app, web, and desktop production builds pass.
+
+### Benchmark
+
+- Deterministic benchmark suite green (3/3) with JSON persistence and run comparison. No
+  fabricated performance numbers were produced.
+
+### Compatibility
+
+- Validated with Bun 1.3.14 and Node 24 on Windows 11. The services are process-local and
+  additive.
+- The Browser Agent requires a locally installed Chromium (or
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`).
+
+### Build instructions
+
+- `bun install` at the repository root.
+- `bun run typecheck` from `packages/app`, `packages/desktop`, `packages/opencode`, or
+  `packages/core`.
+- `bun run build` from `packages/app` and `packages/web`.
+- `electron-vite build` from `packages/desktop` (use
+  `NODE_OPTIONS=--max-old-space-size=4096` on memory-constrained hosts; `bun run build` also
+  downloads the dev CLI and therefore needs network access).
+
+### Run instructions
+
+- Backend: `bun run ./src/index.ts serve --port 4096` from `packages/opencode`.
+- Web app: `bun dev -- --port 4444` from `packages/app`, then open `http://localhost:4444`.
+- Desktop: `bun run dev` from `packages/desktop` (requires the Electron binary).
+- Tests: run `bun test <path>` from the owning package directory, never from the repo root.
+
+### Limitations
+
+- PHASE 8 OS-level sandbox requires native platform bindings (see above).
+- PHASE 11 performance harness requires measured workloads (see above).
+- PHASE 10 runtime Electron launch, Windows symlink assets, and pre-existing i18n parity drift
+  (see above).
+
