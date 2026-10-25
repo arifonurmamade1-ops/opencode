@@ -24,7 +24,7 @@ Status legend: **Done** = implemented and tested; **Partial** = exists but incom
 | 1 | Architecture + diagnosis | In progress (this doc) | Baseline established. |
 | 2 | Agent Manager + task graph | **Done (PHASE 2)** | Task graph: `autonomous/task.ts` (pure state machine). Agent registry: `agent/agent.ts`. **New**: `agent/manager.ts` (`AgentManager.Service`) — start/list/get/cancel/runAll/runForTask, per-instance registry, session-backed execution, parallel fan-out, evidence-friendly RunInfo. Limitations documented in `PHASE-2-agent-manager.md`. |
 | 3 | Multi-agent orchestration | **Done (PHASE 3)** | New service: `packages/opencode/src/orchestration.ts` (`Orchestration.Service`) — plan validation (unique/known/self/cycle), wave-based parallel execution via AgentManager, skip propagation on failed deps, fan-out/fan-in via `dependsOn`, cancellation between waves, per-instance run registry. Tests: `packages/opencode/test/orchestration.test.ts` (8/8). Limitations: inline waves (no mid-flight cancel), no explicit fan-in aggregator, process-local. |
-| 4 | Browser Agent | **Missing (as an agent)** | Browser exists as a surface: `packages/opencode/src/mcp/browser.ts` (`McpBrowser`), browser panel, browser tests. There is **no** autonomous Browser Agent tool that drives a browser session as part of a task. FASE 40 limitation applies if attempted without a real browser driver. |
+| 4 | Browser Agent | **Done (PHASE 4)** | Implemented with playwright-core via packages/opencode/src/browser.ts (Browser.Service) plus agent tool packages/opencode/src/tool/browser.ts. Tests: packages/opencode/test/browser.test.ts (3/3). Backend uses Node child process because Chromium launching wedges under Bun. |
 | 5 | Artifacts + verification | **Done (PHASE 5)** | New service: `packages/opencode/src/artifact.ts` (`Artifact.Service`) — `dir/list/read/write/verify`, filesystem-backed index over `.opencode/artifacts/*.md`, evidence-based verification against acceptance criteria. Tests: `packages/opencode/test/artifact.test.ts` (5/5). Limitations: individual Markdown files (not a general browser/dashboard); verification is substring/evidence based, not semantic. |
 | 6 | Model Router + fallback | **Done (PHASE 6)** | Standalone service: `packages/core/src/model-router.ts` (`ModelRouter.Service`) — `route`/`routeFromCatalog`/`next`/`withFallback`, reusing `ModelFallback.order`/`nextAlternative`/`withFallback` and `SessionRunnerModel.supported`. Tests: `packages/core/test/model-router.test.ts` (8/8). Limitations: capability/cost/latency policy beyond free-first + preferred is a follow-up. |
 | 7 | Memory + context engine | **Done (core)** | `packages/core/src/memory.ts` (list/save/remove, project-scoped), `system-context/*`, memory context (capped 40 entries / ~500 tokens). Memory tool in core. Tests: `memory.test.ts`, `tool-memory.test.ts`, `memory-context.test.ts`, `memory-command.test.ts`. |
@@ -36,7 +36,7 @@ Status legend: **Done** = implemented and tested; **Partial** = exists but incom
 
 ## 3. Gaps requiring decisions (FASE 40)
 
-- **PHASE 4 Browser Agent**: cannot be implemented as a real browser-driving agent without a browser automation driver (Playwright/Puppeteer) — not a dependency today and FASE 41 forbids unnecessary deps. Implementing it as a "browser panel cannot be controlled by the agent" (already documented limitation) is the honest scope. A future implementation needs an explicit dependency decision.
+- **PHASE 4 Browser Agent**: implemented with playwright-core (explicit dependency decision approved by the user). Real service Browser.Service, agent tool rowser, integration tests. See specs/fase39/PHASE-4-browser-agent.md.
 - **PHASE 8 OS sandbox**: cannot be a real OS jail without platform-specific sandboxing (seccomp/Job Objects/AppContainer) — out of scope for a cross-platform TS change without native deps. Static scanner + permission policy is the honest scope.
 - **PHASE 5 general artifact store**: could be implemented (Markdown files on disk already exist for autonomous tasks) — small, scoped, recommended.
 - **PHASE 2 Agent Manager**: implementable as a service composing existing `agent/agent.ts` + `autonomous/task.ts` + session runner — recommended next.
@@ -50,7 +50,7 @@ Status legend: **Done** = implemented and tested; **Partial** = exists but incom
 4. PHASE 3 — Multi-agent orchestration (depends on 2).
 5. PHASE 11/12 — Performance + benchmark + hardening (last, after features stable).
 
-PHASE 4, 8: keep as documented limitations unless an explicit dependency decision is made.
+PHASE 8: keep as documented limitation unless an explicit dependency decision is made.
 
 ## 5. Constraints carried forward
 

@@ -18,6 +18,7 @@ import { SecurityTool } from "./security"
 import { AutonomousTaskTool } from "./autonomous"
 import { TelemetryTool } from "./telemetry"
 import { BenchmarkTool } from "./benchmark"
+import { BrowserTool } from "./browser"
 import { PluginTool } from "./plugin"
 import { HookTool } from "./hook"
 import { McpStatusTool } from "./mcp"
@@ -67,6 +68,7 @@ import { Scheduler } from "@/scheduler/scheduler"
 import { Git } from "@/git"
 import { Git as CoreGit } from "@opencode-ai/core/git"
 import { Benchmark } from "@/benchmark/benchmark"
+import { Browser } from "@/browser"
 
 export function webSearchEnabled(providerID: ProviderV2.ID, flags = { exa: false, parallel: false }) {
   return (
@@ -122,6 +124,7 @@ const layer = Layer.effect(
     const autonomoustool = yield* AutonomousTaskTool
     const telemetrytool = yield* TelemetryTool
     const benchmarktool = yield* BenchmarkTool
+const browsertool = yield* BrowserTool
     const plugintool = yield* PluginTool
     const hooktool = yield* HookTool
     const mcptool = yield* McpStatusTool
@@ -245,6 +248,7 @@ const layer = Layer.effect(
           autonomous: Tool.init(autonomoustool),
           telemetry: Tool.init(telemetrytool),
           benchmark: Tool.init(benchmarktool),
+browser: Tool.init(browsertool),
           plugin: Tool.init(plugintool),
           hook: Tool.init(hooktool),
           mcp: Tool.init(mcptool),
@@ -277,6 +281,7 @@ const layer = Layer.effect(
             tool.autonomous,
             tool.telemetry,
             tool.benchmark,
+tool.browser,
             tool.plugin,
             tool.hook,
             tool.mcp,
@@ -500,6 +505,7 @@ export const node = LayerNode.make({
     Database.node,
     Ripgrep.node,
     Benchmark.node,
+Browser.node,
   ],
 })
 
