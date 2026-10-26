@@ -4,16 +4,43 @@ Date: 2026-10-24 (post PHASE 3, commit `f1928fd`).
 
 ## PHASE 11 — Performance
 
-Status: **Partial (documented, not fabricated)**.
+Status: **Validated with existing harnesses (partial coverage)**.
 
-The codebase already provides:
-- Telemetry module: `packages/opencode/src/telemetry.ts`.
-- A benchmark service (`packages/opencode/src/benchmark/*`) whose cases are deterministic and do not call models, so repeated runs are cheap and reproducible.
-- Persistence of every benchmark run as JSON under the global data directory, plus objective comparison of two runs.
+Measured on 2026-10-25 on Windows x64, Bun 1.3.14, 6 GB RAM / 2 logical CPUs,
+after one warmup per command:
 
-No dedicated performance module, profiling harness, or latency regression gate was added in this arc. Per FASE 40, adding a "performance" feature requires measured workloads and a baseline to compare against; defining those ad hoc would be faking. Candidate follow-ups (out of scope here, requiring measured baselines):
-- A small, opt-in timing wrapper around the orchestrator/agent-manager run paths, reported via telemetry.
-- A CI gate that fails when a benchmark case regresses beyond a threshold.
+| Command | Median wall | Min | Max | Median CPU | Median peak RSS |
+|---|---:|---:|---:|---:|---:|
+| `opencode --version` | 632 ms | 549 ms | 667 ms | 625 ms | 55 MB |
+| `opencode --help` (full command tree) | 35,188 ms | 31,079 ms | 43,323 ms | 7,625 ms | 235 MB |
+
+Command: `bun run performance:audit --runs 3 --full --json` → 0 failures. `--version` stays on
+the lightweight bootstrap path; `--help` loads the complete command tree, so its wall time is
+dominated by module loading (7.6 s CPU; the remainder is I/O, initialization, and host
+scheduling on this 2-core machine).
+
+Functional measurement: `bun test test/benchmark/run.test.ts` → **3/3 pass in 67.17 s**,
+covering the full deterministic suite (14 cases / 12 categories), JSON persistence, run
+comparison, and repeated sampling. Each case records a real `duration_ms` for the operation it
+exercises.
+
+Coverage honesty:
+
+- **Measured:** startup wall/CPU/RSS; functional latency for editing, debugging, refactoring,
+  fetch/extract, multi-agent catalog contracts, long-running background jobs, retry/recovery,
+  context ranking/compression, permissions, MCP policy, routing availability, and
+  truncation/cost budgets.
+- **Declared unavailable by the suite (never estimated):** real browser DOM interaction and TUI
+  rendering.
+- **Not covered:** model streaming latency/throughput (benchmark cases never call a model), real
+  multi-agent scheduling under load (`AgentManager`/`Orchestration` have functional tests but no
+  timing cases), and UI frame timing.
+- **No CI latency-regression gate** was added. The startup audit has a coarse 15 s version budget
+  (`--check`); benchmark run comparison exists but is not enforced in CI.
+
+Per FASE 40, these numbers are host-local observations, not claims of product superiority. The
+existing telemetry module (`packages/opencode/src/telemetry.ts`) remains the runtime source for
+production timings.
 
 ## PHASE 12 — Benchmark + hardening
 
@@ -28,7 +55,12 @@ Status: **Done (validated)**.
 
 ## Remaining open items
 
-- PHASE 4 (Browser Agent) and PHASE 8 (OS sandbox): documented as limitations in `PHASE-1-diagnosis.md` §3, awaiting an explicit dependency decision.
-- PHASE 10 (UI/UX + desktop): not executed; requires app/web/desktop build validation not performed in this environment.
-- PHASE 11 performance harness: candidate follow-ups listed above.
+- PHASE 4 (Browser Agent): implemented with the explicitly approved `playwright-core` dependency.
+  See `PHASE-4-browser-agent.md`; no dependency decision remains.
+- PHASE 8 (OS sandbox): documented limitation; a real OS jail needs native platform bindings.
+  See `PHASE-8-os-sandbox.md`.
+- PHASE 10 (UI/UX + desktop): validated for typecheck and production builds. Residual environment
+  limits (runtime Electron, Windows symlink assets, i18n parity) are in `PHASE-10-ui-desktop.md`.
+- PHASE 11 performance coverage: model streaming, real multi-agent scheduling under load, UI
+  frame timing, and a CI regression threshold remain open (see above).
 - Slide WIP (`packages/core/src/tool/slide*.ts`, `packages/opencode/src/slide/**`) remains untracked per repository rules, awaiting explicit request.

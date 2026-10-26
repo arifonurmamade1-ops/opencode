@@ -21,7 +21,7 @@ multiplatform solutions, test every relevant change).
 | 8 | Security + sandbox | **Partial (documented)** | Scanner + permissions validated (`test/security/scanner.test.ts` 25/25); OS jail blocked by native-dependency constraint. See `PHASE-8-os-sandbox.md` |
 | 9 | Scheduler + remote agents | **Done (existing)** | `packages/opencode/src/scheduler/*`, server/client remote execution, sweep 32/32 |
 | 10 | UI/UX + desktop | **Done (validated)** | App/desktop typecheck pass; app, desktop, and web production builds pass. See `PHASE-10-ui-desktop.md` |
-| 11 | Performance | **Partial (documented)** | No measured performance harness added; telemetry + benchmark suites only. See `PHASE-11-12-hardening.md` |
+| 11 | Performance | **Validated (partial coverage)** | Existing startup audit measured: `--version` 632 ms median / 55 MB RSS, `--help` 35.2 s / 235 MB; deterministic benchmark 3/3 in 67 s. Gaps (model streaming, real scheduling timing, UI rendering, CI gate) documented. See `PHASE-11-12-hardening.md` |
 | 12 | Benchmark + hardening | **Done** | `packages/opencode/src/benchmark/*`, `test/benchmark/run.test.ts` 3/3; hardening and flake fixes across FASE 38–39 |
 
 ## New code and docs
@@ -63,7 +63,8 @@ No public API was changed and no existing feature was removed.
 | Model Router | `bun test test/model-router.test.ts` | 8/8 |
 | Browser | `bun test test/browser.test.ts` | 3/3 (66s) |
 | Security scanner | `bun test test/security/scanner.test.ts` | 25/25 |
-| Benchmark | `bun test test/benchmark/run.test.ts` | 3/3 |
+| Benchmark | `bun test test/benchmark/run.test.ts` | 3/3 (67.17s, 14 cases / 12 categories) |
+| Startup audit | `bun run performance:audit --runs 3 --full --json` | 0 failures; `--version` 632 ms median / 55 MB RSS; `--help` 35,188 ms median / 235 MB RSS |
 | App typecheck | `bun run typecheck` (from `packages/app`) | pass |
 | App build | `bun run build` (from `packages/app`) | pass, 12m36s |
 | App unit subset | serialize + desktop-menu + file-tree + status-popover | 27/27 |
@@ -112,14 +113,21 @@ now carries a 30 s per-test budget, consistent with other slow-host suites.
 
 ### PHASE 11 — performance
 
-- FEATURE: dedicated performance profiling/harness with measured workloads.
-- STATUS: not implemented; documented limitation.
-- LIMITATION: no workload-based perf harness or regression thresholds were added.
-- TECHNICAL REASON: no representative production workloads are defined in-repo beyond the
-  benchmark cases; FASE 40 forbids presenting unmeasured numbers as results.
-- WHAT WAS IMPLEMENTED: existing telemetry module and the benchmark suite (3/3).
-- WHAT REMAINS: define measured workloads, capture a baseline, and add regression thresholds.
-  See `PHASE-11-12-hardening.md`.
+- FEATURE: measured performance validation using the repository's existing harnesses.
+- STATUS: validated with partial coverage; no new profiling module or CI threshold was added.
+- LIMITATION: model streaming, real multi-agent scheduling under load, and UI frame timing are
+  not measured by the deterministic suite; no regression gate is enforced.
+- TECHNICAL REASON: benchmark cases deliberately avoid model calls so runs stay reproducible and
+  free; browser DOM and TUI rendering are declared unavailable instead of estimated; defining
+  production-like streaming/scheduling workloads would require an explicit workload decision.
+- WHAT WAS IMPLEMENTED (measured, not invented): `bun run performance:audit --runs 3 --full
+  --json` → 0 failures, `--version` median 632 ms / 55 MB peak RSS, `--help` median 35,188 ms /
+  235 MB; `bun test test/benchmark/run.test.ts` → 3/3 in 67.17 s across 14 cases / 12
+  categories, with JSON persistence and run comparison. Host: Windows x64, Bun 1.3.14, 6 GB RAM,
+  2 logical CPUs. These are host-local observations, not superiority claims.
+- WHAT REMAINS: define workloads for model streaming and multi-agent scheduling under load, add
+  UI frame timing, and turn benchmark comparison into a CI threshold. See
+  `PHASE-11-12-hardening.md`.
 
 ## Constraints preserved
 
@@ -168,6 +176,8 @@ now carries a 30 s per-test budget, consistent with other slow-host suites.
 
 - Deterministic benchmark suite green (3/3) with JSON persistence and run comparison. No
   fabricated performance numbers were produced.
+- Startup audit re-measured on this host: `--version` 632 ms median / 55 MB peak RSS, `--help`
+  35.2 s median / 235 MB, with zero failures. Host-local baseline, not a cross-machine claim.
 
 ### Compatibility
 
@@ -196,7 +206,8 @@ now carries a 30 s per-test budget, consistent with other slow-host suites.
 ### Limitations
 
 - PHASE 8 OS-level sandbox requires native platform bindings (see above).
-- PHASE 11 performance harness requires measured workloads (see above).
+- PHASE 11 performance coverage gaps: model streaming, real multi-agent scheduling under load,
+  UI frame timing, and a CI regression threshold (see above).
 - PHASE 10 runtime Electron launch, Windows symlink assets, and pre-existing i18n parity drift
   (see above).
 
