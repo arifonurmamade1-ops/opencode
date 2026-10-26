@@ -1,7 +1,6 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { InstanceState } from "@/effect/instance-state"
-import { Identifier } from "@/id/id"
 import { Context, Effect, Layer, Option } from "effect"
 import path from "path"
 
@@ -63,22 +62,33 @@ const layer = Layer.effect(
 
     const read = Effect.fn("Artifact.read")(function* (id: string) {
       const root = yield* InstanceState.get(state)
-      const file = path.join(root, `${id}.md`)
+      const file = artifactFile(root, id)
+      if (!file) return undefined
       return yield* fs.readFileString(file).pipe(Effect.catch(() => Effect.succeed(undefined)))
     })
 
     const write = Effect.fn("Artifact.write")(function* (id: string, content: string) {
       const root = yield* InstanceState.get(state)
-      const file = path.join(root, `${id}.md`)
+      const file = artifactFile(root, id)
+      if (!file) {
+        return yield* new FSUtil.FileSystemError({
+          method: "Artifact.write",
+          cause: new Error(`invalid artifact id: ${JSON.stringify(id)}`),
+        })
+      }
       yield* fs.writeWithDirs(file, content)
       return file
     })
 
     const verify = Effect.fn("Artifact.verify")(function* (input: { id: string; acceptance: readonly string[] }) {
       const root = yield* InstanceState.get(state)
-      const file = path.join(root, `${input.id}.md`)
-      const content = yield* fs.readFileString(file).pipe(Effect.catch(() => Effect.succeed(undefined)))
       const problems: string[] = []
+      const file = artifactFile(root, input.id)
+      if (!file) {
+        problems.push(`invalid artifact id: ${input.id}`)
+        return { ok: false, problems }
+      }
+      const content = yield* fs.readFileString(file).pipe(Effect.catch(() => Effect.succeed(undefined)))
       if (content === undefined) {
         problems.push(`artifact file not found: ${file}`)
         return { ok: false, problems }
@@ -94,6 +104,17 @@ const layer = Layer.effect(
     return Service.of({ dir, list, read, write, verify })
   }),
 )
+
+/**
+ * Artifact ids are single path segments. Reject separators (including Windows
+ * separators on other platforms) and `:` (NTFS alternate data streams) so an id
+ * can never escape the artifact directory.
+ */
+function artifactFile(root: string, id: string): string | undefined {
+  if (id.length === 0 || id === "." || id === "..") return undefined
+  if (id.includes("/") || id.includes("\\") || id.includes("\0") || id.includes(":")) return undefined
+  return path.join(root, `${id}.md`)
+}
 
 export const node = LayerNode.make({ service: Service, layer, deps: [FSUtil.node] })
 

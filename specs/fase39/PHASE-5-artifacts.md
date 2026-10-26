@@ -11,16 +11,18 @@ Scope: provide a general artifact store and verification runner instead of ad-ho
   - `read(id)` — content or undefined.
   - `write(id, content)` — writes (creating dirs) and returns the path.
   - `verify({ id, acceptance })` — structured verification: file exists, non-empty, and every acceptance criterion appears (case-insensitive) as evidence in the content. Returns `{ ok, problems }`.
+  - Artifact ids are single path segments: separators (`/`, `\`), NUL, `:`, `.` and `..` are rejected so an id cannot escape the artifact directory. Invalid ids fail `write`, return undefined from `read`, and produce a structured problem from `verify`.
 - Layer: `Artifact.node` depends on `FSUtil.node` (real filesystem, consistent with the autonomous tool); registry is implicit in the directory listing (no separate index).
 
 ## Tests
 
-- `packages/opencode/test/artifact.test.ts` — 5/5 pass (22s):
+- `packages/opencode/test/artifact.test.ts` — 6/6 pass:
   - write + read + dir
   - list with metadata (size, updatedAt)
   - missing artifact → undefined
   - verify (all criteria met; missing criterion; missing file)
   - empty artifact flagged
+  - ids with traversal/separator/ADS attempts are rejected and no file is written outside the artifact directory
 
 ## Limitations (FASE 40)
 
@@ -30,7 +32,7 @@ Scope: provide a general artifact store and verification runner instead of ad-ho
 
 ## Validation
 
-- `bun test test/artifact.test.ts` → 5/5 pass.
+- `bun test test/artifact.test.ts` → 6/6 pass.
 - `bun typecheck` (packages/opencode) → only the known untracked slide WIP errors.
 
 ## Next action

@@ -2,7 +2,8 @@ import path from "path"
 import { describe, expect } from "bun:test"
 import { Artifact } from "@/artifact"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import { Effect } from "effect"
+import { Effect, Exit } from "effect"
+import { TestInstance } from "./fixture/fixture"
 import { testEffect } from "./lib/effect"
 
 const layer = LayerNode.compile(Artifact.node)
@@ -73,6 +74,27 @@ describe("artifact", () => {
       const result = yield* artifact.verify({ id: "empty", acceptance: [] })
       expect(result.ok).toBe(false)
       expect(result.problems).toContain("artifact is empty")
+    }),
+  )
+
+  it.instance("rejects artifact ids that escape the artifact directory", () =>
+    Effect.gen(function* () {
+      const artifact = yield* Artifact.Service
+      const test = yield* TestInstance
+      const ids = ["../escaped", "../../escaped", "..\\escaped", "nested/report", "..", "report:stream"]
+
+      for (const id of ids) {
+        const outcome = yield* artifact.write(id, "nope").pipe(Effect.exit)
+        expect(Exit.isFailure(outcome)).toBe(true)
+      }
+
+      expect(yield* artifact.read("../../escaped")).toBeUndefined()
+      const verify = yield* artifact.verify({ id: "../../escaped", acceptance: [] })
+      expect(verify.ok).toBe(false)
+      expect(verify.problems[0]).toContain("invalid artifact id")
+
+      expect(yield* Effect.promise(() => Bun.file(path.join(test.directory, ".opencode", "escaped.md")).exists())).toBe(false)
+      expect(yield* Effect.promise(() => Bun.file(path.join(test.directory, "escaped.md")).exists())).toBe(false)
     }),
   )
 })

@@ -15,7 +15,7 @@ multiplatform solutions, test every relevant change).
 | 2 | Agent Manager + task graph | **Done** | `packages/opencode/src/agent/manager.ts` (`AgentManager.Service`), `test/agent/manager.test.ts` 6/6 |
 | 3 | Multi-agent orchestration | **Done** | `packages/opencode/src/orchestration.ts` (`Orchestration.Service`), `test/orchestration.test.ts` 8/8 |
 | 4 | Browser Agent | **Done** | `packages/opencode/src/browser.ts` (`Browser.Service`), `src/browser-worker.cjs`, `src/tool/browser.ts`, `test/browser.test.ts` 3/3 |
-| 5 | Artifacts + verification | **Done** | `packages/opencode/src/artifact.ts` (`Artifact.Service`), `test/artifact.test.ts` 5/5 |
+| 5 | Artifacts + verification | **Done** | `packages/opencode/src/artifact.ts` (`Artifact.Service`), `test/artifact.test.ts` 6/6 |
 | 6 | Model Router + fallback | **Done** | `packages/core/src/model-router.ts` (`ModelRouter.Service`), `test/model-router.test.ts` 8/8 |
 | 7 | Memory + context engine | **Done (existing core)** | `packages/core/src/memory.ts`, `system-context/*`, memory tool and context; suites green |
 | 8 | Security + sandbox | **Partial (documented)** | Scanner + permissions validated (`test/security/scanner.test.ts` 25/25); OS jail blocked by native-dependency constraint. See `PHASE-8-os-sandbox.md` |
@@ -59,7 +59,7 @@ No public API was changed and no existing feature was removed.
 | core typecheck | `bun run typecheck` (from `packages/core`) | only the known untracked slide WIP errors |
 | Agent Manager | `bun test test/agent/manager.test.ts` | 6/6 |
 | Orchestration | `bun test test/orchestration.test.ts` | 8/8 |
-| Artifacts | `bun test test/artifact.test.ts` | 5/5 |
+| Artifacts | `bun test test/artifact.test.ts` | 6/6 |
 | Model Router | `bun test test/model-router.test.ts` | 8/8 |
 | Browser | `bun test test/browser.test.ts` | 3/3 (66s) |
 | Security scanner | `bun test test/security/scanner.test.ts` | 25/25 |
@@ -73,8 +73,8 @@ No public API was changed and no existing feature was removed.
 | Web build | `bun run build` (from `packages/web`) | pass, 1380s server build |
 
 Flake note: on the combined 47-test run, the first artifact test hit the default 5 s test
-budget once on this 2-core host. The isolated artifact suite passed 5/5 (42 s), and that test
-now carries a 30 s per-test budget, consistent with other slow-host suites.
+budget once on this 2-core host. The isolated artifact suite passed 5/5 (42 s) at the time; it is
+now 6/6 after adding the id-traversal regression test.
 
 ## FASE 40 — limitations report
 
@@ -168,7 +168,7 @@ now carries a 30 s per-test budget, consistent with other slow-host suites.
 
 ### Tests
 
-- Agent Manager 6/6, orchestration 8/8, artifacts 5/5, model router 8/8, browser 3/3,
+- Agent Manager 6/6, orchestration 8/8, artifacts 6/6, model router 8/8, browser 3/3,
   security scanner 25/25, benchmark 3/3, app UI subset 27/27.
 - App and desktop typechecks pass; app, web, and desktop production builds pass.
 
