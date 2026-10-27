@@ -1,6 +1,9 @@
 import { Effect, Schema } from "effect"
+import path from "path"
 import * as Tool from "./tool"
 import { Browser } from "@/browser"
+import { InstanceState } from "@/effect/instance-state"
+import { assertExternalDirectoryEffect } from "./external-directory"
 
 export const Parameters = Schema.Struct({
   action: Schema.Literals([
@@ -21,7 +24,10 @@ export const Parameters = Schema.Struct({
   selector: Schema.optional(Schema.String).annotate({ description: "CSS selector to target" }),
   text: Schema.optional(Schema.String).annotate({ description: "Text to fill/type" }),
   script: Schema.optional(Schema.String).annotate({ description: "JavaScript evaluated in the page" }),
-  path: Schema.optional(Schema.String).annotate({ description: "File path for screenshot output" }),
+  path: Schema.optional(Schema.String).annotate({
+    description:
+      "Screenshot output path. Relative paths resolve against the project directory. Defaults to .opencode/screenshots.",
+  }),
 })
 
 const DEFAULT_PAGE = "main"
@@ -34,7 +40,7 @@ export const BrowserTool = Tool.define(
       description:
         "Drive a real browser with Playwright. Supports opening pages, navigating, clicking, filling, reading text, evaluating JS, screenshots and closing pages. Use carefully; browser state is shared per instance.",
       parameters: Parameters,
-      execute: (params: Schema.Schema.Type<typeof Parameters>, _ctx: Tool.Context) =>
+      execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const pageId = params.page && params.page.trim() !== "" ? params.page : DEFAULT_PAGE
 
@@ -86,10 +92,19 @@ export const BrowserTool = Tool.define(
               return { title: "result", output: result, metadata: {} }
             }
             case "screenshot": {
-              const target = yield* browser.screenshot(pageId, params.path)
+              const instance = yield* InstanceState.context
+              const target = screenshotPath(instance.directory, params.path)
+              yield* assertExternalDirectoryEffect(ctx, target)
+              yield* ctx.ask({
+                permission: "edit",
+                patterns: [path.relative(instance.worktree, target)],
+                always: ["*"],
+                metadata: { filepath: target },
+              })
+              const saved = yield* browser.screenshot(pageId, target)
               return {
                 title: "screenshot",
-                output: `Saved screenshot to ${target}`,
+                output: `Saved screenshot to ${saved}`,
                 metadata: {},
               }
             }
@@ -110,7 +125,7 @@ export const BrowserTool = Tool.define(
               return { title: "closed all", output: "All pages closed", metadata: {} }
             }
             default:
-              throw new Error(`Unsupported action: ${params.action}`)
+              throw new Error("Unsupported browser action")
           }
         }).pipe(Effect.orDie),
       formatValidationError(error) {
@@ -119,3 +134,9 @@ export const BrowserTool = Tool.define(
     }
   }),
 )
+
+function screenshotPath(directory: string, input?: string) {
+  const requested = input?.trim()
+  if (!requested) return path.join(directory, ".opencode", "screenshots", `browser-${Date.now()}.png`)
+  return path.isAbsolute(requested) ? requested : path.join(directory, requested)
+}

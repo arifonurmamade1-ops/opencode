@@ -14,7 +14,7 @@ multiplatform solutions, test every relevant change).
 | 1 | Architecture + diagnosis | **Done** | `specs/fase39/PHASE-1-diagnosis.md` |
 | 2 | Agent Manager + task graph | **Done** | `packages/opencode/src/agent/manager.ts` (`AgentManager.Service`), `test/agent/manager.test.ts` 6/6 |
 | 3 | Multi-agent orchestration | **Done** | `packages/opencode/src/orchestration.ts` (`Orchestration.Service`), `test/orchestration.test.ts` 8/8 |
-| 4 | Browser Agent | **Done** | `packages/opencode/src/browser.ts` (`Browser.Service`), `src/browser-worker.cjs`, `src/tool/browser.ts`, `test/browser.test.ts` 3/3 |
+| 4 | Browser Agent | **Done** | `packages/opencode/src/browser.ts` (`Browser.Service`), `src/browser-worker.cjs`, `src/tool/browser.ts`, `test/browser.test.ts` 3/3 + `test/tool/browser.test.ts` 3/3 |
 | 5 | Artifacts + verification | **Done** | `packages/opencode/src/artifact.ts` (`Artifact.Service`), `test/artifact.test.ts` 6/6 |
 | 6 | Model Router + fallback | **Done** | `packages/core/src/model-router.ts` (`ModelRouter.Service`), `test/model-router.test.ts` 8/8 |
 | 7 | Memory + context engine | **Done (existing core)** | `packages/core/src/memory.ts`, `system-context/*`, memory tool and context; suites green |
@@ -62,6 +62,7 @@ No public API was changed and no existing feature was removed.
 | Artifacts | `bun test test/artifact.test.ts` | 6/6 |
 | Model Router | `bun test test/model-router.test.ts` | 8/8 |
 | Browser | `bun test test/browser.test.ts` | 3/3 (66s) |
+| Browser tool permissions | `bun test test/tool/browser.test.ts` | 3/3 (mocked browser; 56–214s host-local) |
 | Security scanner | `bun test test/security/scanner.test.ts` | 25/25 |
 | Benchmark | `bun test test/benchmark/run.test.ts` | 3/3 (67.17s, 14 cases / 12 categories) |
 | Startup audit | `bun run performance:audit --runs 3 --full --json` | 0 failures; `--version` 632 ms median / 55 MB RSS; `--help` 35,188 ms median / 235 MB RSS |
@@ -148,7 +149,8 @@ now 6/6 after adding the id-traversal regression test.
   criteria.
 - Standalone Model Router with catalog routing and fallback composition.
 - Browser Agent driving headless Chromium through the `browser` tool (navigation, click, fill,
-  text, title, evaluate, screenshot, page lifecycle).
+  text, title, evaluate, screenshot, page lifecycle). Screenshot writes are permission-gated and
+  default to `.opencode/screenshots`.
 
 ### Features improved
 
@@ -168,8 +170,8 @@ now 6/6 after adding the id-traversal regression test.
 
 ### Tests
 
-- Agent Manager 6/6, orchestration 8/8, artifacts 6/6, model router 8/8, browser 3/3,
-  security scanner 25/25, benchmark 3/3, app UI subset 27/27.
+- Agent Manager 6/6, orchestration 8/8, artifacts 6/6, model router 8/8, browser 3/3 +
+  browser tool permissions 3/3, security scanner 25/25, benchmark 3/3, app UI subset 27/27.
 - App and desktop typechecks pass; app, web, and desktop production builds pass.
 
 ### Benchmark

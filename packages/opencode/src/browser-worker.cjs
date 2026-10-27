@@ -109,6 +109,7 @@ async function handle(cmd, args) {
       const page = pages.get(String(payload.id))
       if (!page) throw new Error("Unknown page: " + payload.id)
       const target = payload.filePath && String(payload.filePath).trim() !== "" ? String(payload.filePath) : path.join(process.cwd(), "browser-" + Date.now() + ".png")
+      fs.mkdirSync(path.dirname(target), { recursive: true })
       await page.screenshot({ path: target, fullPage: true })
       return target
     }
