@@ -60,14 +60,17 @@ function validate(plan: Plan): string | undefined {
   if (new Set(ids).size !== ids.length) return "duplicate step id"
   const idSet = new Set(ids)
   for (const step of plan.steps) {
+    const seen = new Set<string>()
     for (const dep of step.dependsOn ?? []) {
       if (!idSet.has(dep)) return `step "${step.id}" depends on unknown step "${dep}"`
       if (dep === step.id) return `step "${step.id}" depends on itself`
+      if (seen.has(dep)) return `step "${step.id}" lists dependency "${dep}" more than once`
+      seen.add(dep)
     }
   }
   // cycle detection (Kahn)
   const inDegree = new Map(ids.map((id) => [id, 0]))
-  for (const step of plan.steps) for (const dep of step.dependsOn ?? []) inDegree.set(step.id, (inDegree.get(step.id) ?? 0) + 1)
+  for (const step of plan.steps) inDegree.set(step.id, step.dependsOn?.length ?? 0)
   const queue = ids.filter((id) => (inDegree.get(id) ?? 0) === 0)
   let visited = 0
   while (queue.length > 0) {
@@ -97,7 +100,6 @@ const layer = Layer.effect(
 
       const id = Identifier.create("orc", "descending")
       const startedAt = Date.now()
-      const stepById = new Map(plan.steps.map((s) => [s.id, s]))
       const results: Record<string, StepResult> = {}
       const run: RunInfo = { id, status: "running", startedAt, results: {} }
       const map = yield* InstanceState.get(state)

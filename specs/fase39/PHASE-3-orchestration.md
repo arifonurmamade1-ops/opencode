@@ -6,20 +6,20 @@ Scope: a first-class orchestration layer on top of the Agent Manager (PHASE 2) w
 ## What was implemented
 
 - New service: `packages/opencode/src/orchestration.ts` (`Orchestration.Service`, `@opencode/Orchestration`).
-  - `start(plan)` — validates the plan (unique ids, known deps, no self-dep, no cycles via Kahn), then runs steps in waves: ready steps (all deps completed) run in parallel via `AgentManager.start` with `concurrency: "unbounded"`; steps whose dependency failed/cancelled/skipped are marked `skipped`; terminal when all steps are done. Returns a `RunInfo` with per-step `StepResult` (status, session id, output, error).
+  - `start(plan)` — validates the plan (unique ids, known deps, no self-dep, no duplicate dependency entries, no cycles via Kahn), then runs steps in waves: ready steps (all deps completed) run in parallel via `AgentManager.start` with `concurrency: "unbounded"`; steps whose dependency failed/cancelled/skipped are marked `skipped`; terminal when all steps are done. Returns a `RunInfo` with per-step `StepResult` (status, session id, output, error).
   - `get(id)` / `list()` — process-local run registry scoped per instance directory.
   - `cancel(id)` — flips a running run to `cancelled` between waves (already-completed waves stay); observed by the running loop via the persisted run status.
-  - Validation errors surface as `InvalidPlanError` (tagged): duplicate id, unknown dep, self-dep, cycle.
+  - Validation errors surface as `InvalidPlanError` (tagged): duplicate id, unknown dep, self-dep, duplicate dependency entry, cycle.
 - Layer: `Orchestration.node` depends on `AgentManager.node`.
 
 ## Tests
 
-- `packages/opencode/test/orchestration.test.ts` — 8/8 pass (43s):
+- `packages/opencode/test/orchestration.test.ts` — 8/8 pass (40–121s host-local):
   - dependency order (linear chain)
   - fan-out (independent steps)
   - fan-in (multi-dependency step waits)
   - skip propagation on dependency failure (run status `failed`, dependent `skipped`, independent step completes)
-  - invalid plans (cycle, unknown dep, duplicate id, self-dep)
+  - invalid plans (cycle, unknown dep, duplicate id, self-dep, duplicate dependency entry)
   - unknown run → `get`/`cancel` undefined
   - cancel after completion is a no-op status-wise
   - multi-run listing

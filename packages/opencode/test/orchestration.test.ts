@@ -147,6 +147,14 @@ describe("orchestration", () => {
         steps: [{ id: "a", agent: "build", prompt: "x", dependsOn: ["a"] }],
       }).pipe(Effect.flip)
       expect(self.message).toContain("itself")
+
+      const duplicateDep = yield* orchestration.start({
+        steps: [
+          { id: "a", agent: "build", prompt: "x" },
+          { id: "b", agent: "build", prompt: "y", dependsOn: ["a", "a"] },
+        ],
+      }).pipe(Effect.flip)
+      expect(duplicateDep.message).toContain("more than once")
     }),
   )
 

@@ -157,6 +157,7 @@ now 6/6 after adding the id-traversal regression test.
 - App typechecking is now portable across Windows/Linux/macOS (custom-elements reference).
 - Root workspace metadata is strict JSON again, so Vite/esbuild consumers load it correctly.
 - Dashboard plural call sites are typed against the shared language API.
+- Orchestration rejects duplicate entries in `dependsOn` explicitly instead of reporting a false dependency cycle.
 
 ### Architecture
 
