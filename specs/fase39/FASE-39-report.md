@@ -48,6 +48,10 @@ multiplatform solutions, test every relevant change).
   `TS1128`.
 - **Dashboard plural key**: added `"dashboard.agents.pending"` to the app `PluralKey` union so
   the existing dashboard call sites typecheck.
+- **Desktop-native dictionary alignment**: the `hr`, `hu`, `is`, and `lt` app dictionaries were
+  missing the six inline editor entries and `toggleBrowser` in their desktop arrays, which
+  shifted every subsequent native menu label. Added the seven entries in source order and fixed
+  the parity test so a missing plural variant is reported instead of throwing `TypeError`.
 
 No public API was changed and no existing feature was removed.
 
@@ -106,7 +110,9 @@ now 6/6 after adding the id-traversal regression test.
   `packages/app/public` symlinks are checked out as text stubs. Node's default ~2 GB heap also
   OOMs the desktop/web bundles, requiring an explicit larger heap.
 - WHAT WAS IMPLEMENTED: portable custom-elements reference, dashboard plural key fix, strict-JSON
-  catalog fix; app/desktop typecheck and app/desktop/web production builds validated.
+  catalog fix, and realigned desktop-native dictionaries for `hr`/`hu`/`is`/`lt` (seven missing
+  entries each had shifted every later menu label); app/desktop typecheck and app/desktop/web
+  production builds validated.
 - WHAT REMAINS: run the full app unit suite (blocked by pre-existing i18n parity drift on this
   branch), launch/package Electron on a machine with the Electron binary, and enable git
   symlinks (or copy assets at build time) for correct Windows icons. See

@@ -39,6 +39,23 @@ Electron on a machine with the Electron binary, and validate the desktop packagi
 
 No public API, architecture, or user-visible copy was changed. No dependency was added.
 
+## Additional i18n hardening (2026-10-28)
+
+- Four app locales (`hr`, `hu`, `is`, `lt`) built the desktop-native dictionary from a 90-entry
+  array while `DESKTOP_NATIVE_KEYS` has 97 keys. The six inline editor items and
+  `toggleBrowser` were absent, so every later desktop key mapped to the wrong label (for
+  example, `desktop.menu.inlineExplain` showed the "toggle sidebar" string) and the final seven
+  keys were `undefined`. Added the missing entries in source order using terminology already
+  present in each file (`preglednik`, `böngésző`, `vafri`, `naršyklė`). Icelandic uses
+  "Endurskipuleggja" for refactor; it also means "reorganize", so native review is worthwhile.
+- `parity.test.ts` no longer throws `TypeError: undefined is not an object` when a locale lacks
+  a required plural variant; missing variants now surface through the normal assertion.
+- Result: `bun test src/i18n/parity.test.ts` → 3 pass / 2 fail (previously 1/4), with no
+  `undefined` dictionary values and no placeholder mismatches. The remaining failures are only
+  the documented missing translations for the new `browser.*`, `command.inline.*`, and
+  `dashboard.*` keys plus the English-only `dashboard.agents.pending` plural family.
+- `bun test src/i18n/desktop-native.test.ts` → 8/8 pass.
+
 ## Validation
 
 | Package | Command | Result |
@@ -77,8 +94,9 @@ Notes:
   branch because `en.ts` contains keys that no non-English locale has yet
   (`browser.*`, `command.inline.*`, `command.dashboard.open`, `dashboard.*`,
   `desktop.menu.inline*`) and the `dashboard.agents.pending` plural family is English-only.
-  The parity test also throws while comparing placeholders because the target `.other` variant
-  is missing. PHASE 10 did not add these keys; fabricating translations is out of scope and
-  contradicts the app localization rules, so the full `test:unit` suite is not green.
+  PHASE 10 did not add these keys; fabricating translations is out of scope and contradicts the
+  app localization rules, so the full `test:unit` suite is not green. The desktop-native
+  alignment bug and the plural-variant crash in the parity test were fixed afterwards; the
+  remaining failures are the missing translations themselves (68 assertions).
 - **No UI/UX redesign.** PHASE 10 in this arc is a validation phase; no new screens or
   interaction changes were requested or invented.

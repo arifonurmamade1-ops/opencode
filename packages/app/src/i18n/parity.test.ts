@@ -130,7 +130,11 @@ describe("i18n parity", () => {
         const pluralMismatched = pluralFamilies(source).flatMap((key) =>
           (pluralCategories.get(locale) ?? [])
             .map((category) => `${key}.${category}`)
-            .filter((variant) => placeholders(source[`${key}.other`]).join() !== placeholders(target[variant]).join()),
+            .filter(
+              (variant) =>
+                Object.hasOwn(target, variant) &&
+                placeholders(source[`${key}.other`]).join() !== placeholders(target[variant]).join(),
+            ),
         )
         expect({ domain: domain.name, locale, mismatched, pluralMismatched }).toEqual({
           domain: domain.name,
