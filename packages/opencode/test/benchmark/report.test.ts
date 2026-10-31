@@ -11,14 +11,19 @@ function runOf(
   id: string,
   label: string,
   metrics: Record<string, number>,
-  options?: { samples?: number; caseID?: string; category?: BenchmarkReport.CategoryID },
+  options?: {
+    samples?: number
+    caseID?: string
+    category?: BenchmarkReport.CategoryID
+    environment?: Partial<BenchmarkReport.RunEnvironment>
+  },
 ): BenchmarkReport.Run {
   return {
     id,
     label,
     createdAt: "2026-10-19T00:00:00.000Z",
     durationMs: 100,
-    environment: { platform: "test", arch: "test", bun: "0.0.0" },
+    environment: { platform: "test", arch: "test", bun: "0.0.0", ...options?.environment },
     cases: [
       {
         id: options?.caseID ?? "coding.apply-edit",
@@ -104,6 +109,30 @@ describe("benchmark.report", () => {
       runOf("b", "candidate", { ok: 1 }),
     )
     expect(regression.cases[0]!.metrics[0]!.verdict).toBe("worse")
+  })
+
+  test("compareRuns flags runs from different environments as non-comparable", () => {
+    const same = BenchmarkReport.compareRuns(
+      runOf("a", "baseline", { duration_ms: 100 }),
+      runOf("b", "candidate", { duration_ms: 90 }),
+    )
+    expect(same.comparability).toEqual({ comparable: true, differences: [] })
+    expect(BenchmarkReport.formatComparison(same)).toContain("comparability: yes")
+
+    const otherPlatform = BenchmarkReport.compareRuns(
+      runOf("a", "baseline", { duration_ms: 100 }),
+      runOf("b", "candidate", { duration_ms: 90 }, { environment: { platform: "linux" } }),
+    )
+    expect(otherPlatform.comparability.comparable).toBe(false)
+    expect(otherPlatform.comparability.differences).toContain("platform test != linux")
+    expect(BenchmarkReport.formatComparison(otherPlatform)).toContain("comparability: no")
+
+    const otherRuntime = BenchmarkReport.compareRuns(
+      runOf("a", "baseline", { duration_ms: 100 }),
+      runOf("b", "candidate", { duration_ms: 90 }, { environment: { bun: "9.9.9" } }),
+    )
+    expect(otherRuntime.comparability.comparable).toBe(false)
+    expect(otherRuntime.comparability.differences).toContain("bun 0.0.0 != 9.9.9")
   })
 
   test("compareRuns marks sufficient sample counts significant", () => {

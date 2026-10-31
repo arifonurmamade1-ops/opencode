@@ -131,7 +131,9 @@ now 6/6 after adding the id-traversal regression test.
   --json` → 0 failures, `--version` median 632 ms / 55 MB peak RSS, `--help` median 35,188 ms /
   235 MB; `bun test test/benchmark/run.test.ts` → 3/3 in 67.17 s across 14 cases / 12
   categories, with JSON persistence and run comparison. Host: Windows x64, Bun 1.3.14, 6 GB RAM,
-  2 logical CPUs. These are host-local observations, not superiority claims.
+  2 logical CPUs. These are host-local observations, not superiority claims. Comparison now
+  records `comparability`: runs from different platforms, architectures, or Bun versions are
+  labelled non-comparable instead of being read as code-only deltas.
 - WHAT REMAINS: define workloads for model streaming and multi-agent scheduling under load, add
   UI frame timing, and turn benchmark comparison into a CI threshold. See
   `PHASE-11-12-hardening.md`.

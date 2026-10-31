@@ -36,7 +36,9 @@ Coverage honesty:
   multi-agent scheduling under load (`AgentManager`/`Orchestration` have functional tests but no
   timing cases), and UI frame timing.
 - **No CI latency-regression gate** was added. The startup audit has a coarse 15 s version budget
-  (`--check`); benchmark run comparison exists but is not enforced in CI.
+  (`--check`); benchmark run comparison exists but is not enforced in CI. Comparison does guard
+  against false evidence: `compareRuns` records `comparability`, and `formatComparison` marks
+  deltas from different platforms, architectures, or Bun versions as non-comparable.
 
 Per FASE 40, these numbers are host-local observations, not claims of product superiority. The
 existing telemetry module (`packages/opencode/src/telemetry.ts`) remains the runtime source for
@@ -51,6 +53,7 @@ Status: **Done (validated)**.
 - Hardening delivered across this arc:
   - FASE 38: browser launcher error/grace coverage, scheduler failed-run + broken-check recovery, stale running-marker reclaim, report truncation, background-job `waitForPromotion` semantics, provider-retry coverage audited (already present).
   - FASE 39 sweep: fixed `EffectFlock` lock-root recreation after state-dir wipe (real production bug), resolved slow-host budgets (browser, flock, oauth-browser), and a shared-harness `it.instance` timeout pass-through.
+  - Benchmark comparison hardening: `compareEnvironments`/`Comparison.comparability` expose platform, arch, and Bun differences, and `formatComparison` renders mixed-environment deltas as non-comparable. Covered by `test/benchmark/report.test.ts` (8/8).
   - PHASE 2/3/5/6: new services each shipped with tests and typecheck green (Agent Manager 6/6, Orchestration 8/8, Artifact 5/5, Model Router 8/8).
 
 ## Remaining open items

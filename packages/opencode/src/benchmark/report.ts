@@ -111,12 +111,23 @@ export type CaseDelta = {
   readonly metrics: readonly MetricDelta[]
 }
 
+/**
+ * Whether two runs share the environment that produced their metrics.
+ * Deltas only isolate the code under test when platform, architecture, and
+ * runtime are identical; otherwise they also measure the machine/runtime.
+ */
+export type Comparability = {
+  readonly comparable: boolean
+  readonly differences: readonly string[]
+}
+
 export type Comparison = {
   readonly a: RunSummary
   readonly b: RunSummary
   readonly noise: number
   readonly significant: boolean
   readonly minSamples: number
+  readonly comparability: Comparability
   readonly counts: Record<Verdict, number>
   readonly cases: readonly CaseDelta[]
 }
@@ -189,6 +200,15 @@ export function summarizeRun(run: Run): RunSummary {
   }
 }
 
+export function compareEnvironments(a: RunEnvironment, b: RunEnvironment): Comparability {
+  const differences = [
+    a.platform === b.platform ? undefined : `platform ${a.platform} != ${b.platform}`,
+    a.arch === b.arch ? undefined : `arch ${a.arch} != ${b.arch}`,
+    a.bun === b.bun ? undefined : `bun ${a.bun} != ${b.bun}`,
+  ].filter((item): item is string => item !== undefined)
+  return { comparable: differences.length === 0, differences }
+}
+
 export function compareRuns(a: Run, b: Run, options?: { readonly noise?: number }): Comparison {
   const noise = options?.noise ?? NOISE_BAND
   const aCases = new Map(a.cases.map((item) => [item.id, item]))
@@ -234,6 +254,7 @@ export function compareRuns(a: Run, b: Run, options?: { readonly noise?: number 
     noise,
     significant: minSamples >= MIN_SIGNIFICANT_SAMPLES,
     minSamples,
+    comparability: compareEnvironments(a.environment, b.environment),
     counts,
     cases,
   }
@@ -328,6 +349,9 @@ export function formatComparison(comparison: Comparison): string {
     comparison.significant
       ? `significance: yes (minimum samples ${comparison.minSamples} >= ${MIN_SIGNIFICANT_SAMPLES})`
       : `significance: no (minimum samples ${comparison.minSamples} < ${MIN_SIGNIFICANT_SAMPLES}) — descriptive only`,
+    comparison.comparability.comparable
+      ? "comparability: yes (same platform, arch, and runtime)"
+      : `comparability: no (${comparison.comparability.differences.join(", ")}) — deltas include environment differences, not just the code under test`,
     `verdicts: ${VERDICT_ORDER.map((verdict) => `${verdict}=${comparison.counts[verdict]}`).join(" ")}`,
     "",
   ]
